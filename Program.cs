@@ -24,10 +24,13 @@ namespace TelegramProductivityBot
             // Запуск long polling
             await botService.StartAsync();
 
-            Console.WriteLine("Бот запущен. Нажмите Enter для его остановки.");
+            Console.WriteLine("Бот запущен.");
 
             // Остановка бота при завершении программы
-            botService.Stop();
+            
+            await Task.Delay(-1);
+
+            
         }
     }
 }
