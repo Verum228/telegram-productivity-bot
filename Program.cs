@@ -25,7 +25,6 @@ namespace TelegramProductivityBot
             await botService.StartAsync();
 
             Console.WriteLine("Бот запущен. Нажмите Enter для его остановки.");
-            Console.ReadLine();
 
             // Остановка бота при завершении программы
             botService.Stop();
