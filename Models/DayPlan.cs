@@ -15,6 +15,10 @@ namespace TelegramProductivityBot.Models
         public bool MainDone { get; set; }
         public bool MediumDone { get; set; }
         public bool EasyDone { get; set; }
+        public bool MainFailed { get; set; }
+        public bool MediumFailed { get; set; }
+        public bool EasyFailed { get; set; }
+        public bool IsPlanCompleted { get; set; }
         public DateTime CreatedDate { get; set; }
     }
 }

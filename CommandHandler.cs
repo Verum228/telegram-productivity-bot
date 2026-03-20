@@ -144,7 +144,6 @@ namespace TelegramProductivityBot
             }
 
             // Обработка текстовых кнопок (меню)
-            if (text == "📋 Задачи") { await SendTasksMenuAsync(chatId, cancellationToken); return; }
             if (text == "🎯 Фокус") { await SendFocusMenuAsync(chatId, cancellationToken); return; }
             if (text == "📅 План дня") { await SendPlanMenuAsync(chatId, cancellationToken); return; }
             if (text == "📊 Статистика") { await SendStatsMenuAsync(chatId, cancellationToken); return; }
@@ -157,14 +156,18 @@ namespace TelegramProductivityBot
             if (text == "🗑 Удалить задачу") { await _botClient.SendMessage(chatId, "Для удаления отправьте:\n/delete [номер задачи] (в разработке)", cancellationToken: cancellationToken); return; }
             if (text == "🔔 Анти-лень" || text == "💀 Hard mode" || text == "🔕 Выключить напоминания") { await _botClient.SendMessage(chatId, $"Настройка. Для включения используйте команды /antilen on/off или /hardmode on/off", cancellationToken: cancellationToken); return; }
             
+            if (text == "Анти-лень ВКЛ") { await _antiLazinessService.SetAntiLenAsync(chatId, true); return; }
+            if (text == "Анти-лень ВЫКЛ") { await _antiLazinessService.SetAntiLenAsync(chatId, false); return; }
+            if (text == "Hard mode ВКЛ") { await _antiLazinessService.SetHardModeAsync(chatId, true); return; }
+            if (text == "Hard mode ВЫКЛ") { await _antiLazinessService.SetHardModeAsync(chatId, false); return; }
+            
             // Кнопки управления планом
-            if (text == "✔ Выполнить главную" || text == "✔ Выполнить среднюю" || text == "✔ Выполнить лёгкую")
-            {
-                int taskType = text.Contains("главную") ? 1 : text.Contains("среднюю") ? 2 : 3;
-                await _dayPlanService.MarkDayPlanTaskDoneAsync(chatId, taskType);
-                await HandleTodayCommandAsync(chatId, cancellationToken);
-                return;
-            }
+            if (text == "✔ Главная") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 1, true); await HandleTodayCommandAsync(chatId, cancellationToken); return; }
+            if (text == "❌ Главная") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 1, false); await HandleTodayCommandAsync(chatId, cancellationToken); return; }
+            if (text == "✔ Средняя") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 2, true); await HandleTodayCommandAsync(chatId, cancellationToken); return; }
+            if (text == "❌ Средняя") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 2, false); await HandleTodayCommandAsync(chatId, cancellationToken); return; }
+            if (text == "✔ Лёгкая") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 3, true); await HandleTodayCommandAsync(chatId, cancellationToken); return; }
+            if (text == "❌ Лёгкая") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 3, false); await HandleTodayCommandAsync(chatId, cancellationToken); return; }
             if (text == "🗑 Удалить план")
             {
                 _dayPlanService.DeleteDayPlan(chatId);
@@ -205,15 +208,6 @@ namespace TelegramProductivityBot
                     break;
                 case "/help":
                     await HandleHelpCommandAsync(chatId, cancellationToken);
-                    break;
-                case "/addtask":
-                    await HandleAddTaskCommandAsync(chatId, text, cancellationToken);
-                    break;
-                case "/tasks":
-                    await HandleTasksCommandAsync(chatId, cancellationToken);
-                    break;
-                case "/done":
-                    await HandleDoneCommandAsync(chatId, text, cancellationToken);
                     break;
                 case "/focus":
                     // Если отправлено просто /focus (например с кнопки), ставим 25 минут
@@ -292,8 +286,8 @@ namespace TelegramProductivityBot
         {
             var replyKeyboardMarkup = new ReplyKeyboardMarkup(new[]
             {
-                new KeyboardButton[] { "📋 Задачи", "🎯 Фокус" },
-                new KeyboardButton[] { "📅 План дня", "📊 Статистика" },
+                new KeyboardButton[] { "📅 План дня", "🎯 Фокус" },
+                new KeyboardButton[] { "📋 Мои долгосрочные задачи", "📊 Статистика" },
                 new KeyboardButton[] { "👤 Профиль", "⚙️ Настройки" }
             })
             {
@@ -430,8 +424,9 @@ namespace TelegramProductivityBot
         {
             var replyKeyboardMarkup = new ReplyKeyboardMarkup(new[]
             {
-                new KeyboardButton[] { "🔔 Анти-лень", "💀 Hard mode" },
-                new KeyboardButton[] { "🔕 Выключить напоминания", "⬅ Назад" }
+                new KeyboardButton[] { "Анти-лень ВКЛ", "Анти-лень ВЫКЛ" },
+                new KeyboardButton[] { "Hard mode ВКЛ", "Hard mode ВЫКЛ" },
+                new KeyboardButton[] { "⬅ Назад" }
             })
             {
                 ResizeKeyboard = true
@@ -454,10 +449,6 @@ namespace TelegramProductivityBot
                                  "/focus [минуты] - запустить таймер Pomodoro\n" +
                                  "/stopfocus - досрочно остановить таймер\n" +
                                  "/status - статус текущей сессии фокуса\n\n" +
-                                 "📋 Задачи\n" +
-                                 "/addtask [текст] - добавить задачу\n" +
-                                 "/tasks - список задач\n" +
-                                 "/done [номер] - отметить задачу выполненной\n\n" +
                                  "📌 Долгосрочные задачи:\n" +
                                  "/longtasks - показать долгосрочные задачи\n" +
                                  "/addlongtask - добавить долгосрочную задачу\n" +
@@ -479,97 +470,7 @@ namespace TelegramProductivityBot
                 cancellationToken: cancellationToken);
         }
 
-        /// <summary>
-        /// Действие при получении команды /addtask
-        /// </summary>
-        private async Task HandleAddTaskCommandAsync(long chatId, string fullText, CancellationToken cancellationToken)
-        {
-            // Убираем саму команду /addtask из текста
-            string taskText = fullText.Substring("/addtask".Length).Trim();
-            
-            if (string.IsNullOrEmpty(taskText))
-            {
-                await _botClient.SendMessage(
-                    chatId: chatId,
-                    text: "Пожалуйста, укажите текст задачи. Пример: /addtask Сделать лабораторную",
-                    cancellationToken: cancellationToken);
-                return;
-            }
 
-            _taskService.AddTask(chatId, taskText);
-            
-            await _botClient.SendMessage(
-                chatId: chatId,
-                text: "Задача добавлена.",
-                cancellationToken: cancellationToken);
-        }
-
-        /// <summary>
-        /// Действие при получении команды /tasks
-        /// </summary>
-        private async Task HandleTasksCommandAsync(long chatId, CancellationToken cancellationToken)
-        {
-            var tasks = _taskService.GetTasks(chatId);
-            
-            if (tasks.Count == 0)
-            {
-                await _botClient.SendMessage(
-                    chatId: chatId,
-                    text: "У вас пока нет задач.",
-                    cancellationToken: cancellationToken);
-                return;
-            }
-
-            string responseList = "Ваши задачи:\n\n";
-            for (int i = 0; i < tasks.Count; i++)
-            {
-                var task = tasks[i];
-                string statusIcon = task.IsDone ? "✔" : "❌";
-                responseList += $"{task.Id}. {task.Text} {statusIcon}\n";
-            }
-
-            await _botClient.SendMessage(
-                chatId: chatId,
-                text: responseList,
-                cancellationToken: cancellationToken);
-        }
-
-        /// <summary>
-        /// Действие при получении команды /done
-        /// </summary>
-        private async Task HandleDoneCommandAsync(long chatId, string fullText, CancellationToken cancellationToken)
-        {
-            string numberStr = fullText.Substring("/done".Length).Trim();
-            
-            if (int.TryParse(numberStr, out int taskId))
-            {
-                bool success = _taskService.MarkTaskDone(chatId, taskId);
-                if (success)
-                {
-                    // Начисляем опыт за выполненную задачу
-                    _statsService.UpdateTaskCompleted(chatId);
-                    
-                    await _botClient.SendMessage(
-                        chatId: chatId,
-                        text: "Задача выполнена. Получено +10 XP!",
-                        cancellationToken: cancellationToken);
-                }
-                else
-                {
-                    await _botClient.SendMessage(
-                        chatId: chatId,
-                        text: "Задача с таким номером не найдена или уже выполнена.",
-                        cancellationToken: cancellationToken);
-                }
-            }
-            else
-            {
-                await _botClient.SendMessage(
-                    chatId: chatId,
-                    text: "Пожалуйста, укажите корректный номер задачи. Пример: /done 1",
-                    cancellationToken: cancellationToken);
-            }
-        }
         /// <summary>
         /// Обработка возврата команды /focus
         /// </summary>
@@ -685,9 +586,9 @@ namespace TelegramProductivityBot
                 return;
             }
 
-            string mainStatus = plan.MainDone ? "✔" : "❌";
-            string mediumStatus = plan.MediumDone ? "✔" : "❌";
-            string easyStatus = plan.EasyDone ? "✔" : "❌";
+            string mainStatus = plan.MainDone ? "✔" : plan.MainFailed ? "❌" : "⏳";
+            string mediumStatus = plan.MediumDone ? "✔" : plan.MediumFailed ? "❌" : "⏳";
+            string easyStatus = plan.EasyDone ? "✔" : plan.EasyFailed ? "❌" : "⏳";
 
             string response = $"Текущий план дня:\n\n" +
                               $"🔥 Главная задача ({mainStatus}):\n{plan.MainTask}\n\n" +
@@ -696,8 +597,9 @@ namespace TelegramProductivityBot
 
             var replyKeyboardMarkup = new ReplyKeyboardMarkup(new[]
             {
-                new KeyboardButton[] { "✔ Выполнить главную" },
-                new KeyboardButton[] { "✔ Выполнить среднюю", "✔ Выполнить лёгкую" },
+                new KeyboardButton[] { "✔ Главная", "❌ Главная" },
+                new KeyboardButton[] { "✔ Средняя", "❌ Средняя" },
+                new KeyboardButton[] { "✔ Лёгкая", "❌ Лёгкая" },
                 new KeyboardButton[] { "✏ Изменить задачу", "🗑 Удалить план" },
                 new KeyboardButton[] { "⬅ Назад" }
             })

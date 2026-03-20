@@ -39,9 +39,9 @@ namespace TelegramProductivityBot
             _activityService = new ActivityService(_taskService);
             _statsService = new StatsService(_taskService, _activityService);
             _focusService = new FocusService(_botClient, _taskService, _statsService);
-            _antiLazinessService = new AntiLazinessService(_botClient, _taskService);
+            _antiLazinessService = new AntiLazinessService(_botClient, _taskService, _statsService);
             _streakService = new StreakService(_taskService);
-            _dayPlanService = new DayPlanService(_botClient, _taskService, _streakService);
+            _dayPlanService = new DayPlanService(_botClient, _taskService, _streakService, _statsService);
             _reminderService = new ReminderService(_botClient, _taskService);
             _longTaskService = new LongTaskService();
             _adviceService = new AdviceService(_taskService, _streakService);

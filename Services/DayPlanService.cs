@@ -13,12 +13,14 @@ namespace TelegramProductivityBot.Services
         private readonly ITelegramBotClient _botClient;
         private readonly TaskService _taskService;
         private readonly StreakService _streakService;
+        private readonly StatsService _statsService;
 
-        public DayPlanService(ITelegramBotClient botClient, TaskService taskService, StreakService streakService)
+        public DayPlanService(ITelegramBotClient botClient, TaskService taskService, StreakService streakService, StatsService statsService)
         {
             _botClient = botClient;
             _taskService = taskService;
             _streakService = streakService;
+            _statsService = statsService;
         }
 
         /// <summary>
@@ -42,24 +44,74 @@ namespace TelegramProductivityBot.Services
             _taskService.UpdateDayPlanTask(userId, taskType, newText);
         }
 
-        public async Task MarkDayPlanTaskDoneAsync(long userId, int taskType)
+        public async Task ProcessDayPlanTaskAsync(long userId, int taskType, bool markAsDone)
         {
-            _taskService.MarkDayPlanTaskDone(userId, taskType);
-            
-            // Проверяем, не выполнены ли все 3 задачи
             var plan = GetTodayPlan(userId);
-            if (plan != null && plan.MainDone && plan.MediumDone && plan.EasyDone)
-            {
+            if (plan == null) return;
+            
+            if (plan.IsPlanCompleted) {
+                await _botClient.SendMessage(chatId: userId, text: "План дня завершён 🔥 Изменения больше не принимаются.");
+                return;
+            }
+
+            bool currentDone = false;
+            bool currentFailed = false;
+            switch (taskType) {
+                case 1: currentDone = plan.MainDone; currentFailed = plan.MainFailed; break;
+                case 2: currentDone = plan.MediumDone; currentFailed = plan.MediumFailed; break;
+                case 3: currentDone = plan.EasyDone; currentFailed = plan.EasyFailed; break;
+            }
+            
+            if (markAsDone && currentDone) {
+                await _botClient.SendMessage(chatId: userId, text: "Статус уже установлен");
+                return;
+            }
+            if (!markAsDone && currentFailed) {
+                await _botClient.SendMessage(chatId: userId, text: "Статус уже установлен");
+                return;
+            }
+            
+            int xpChange = 0;
+            if (markAsDone) {
+                xpChange = currentFailed ? 15 : 10;
+            } else {
+                xpChange = currentDone ? -15 : -5;
+            }
+            
+            _taskService.SetDayPlanTaskStatus(userId, taskType, markAsDone, !markAsDone);
+            _statsService.AddXP(userId, xpChange);
+            
+            var updatedPlan = GetTodayPlan(userId);
+            int doneCount = (updatedPlan.MainDone ? 1 : 0) + (updatedPlan.MediumDone ? 1 : 0) + (updatedPlan.EasyDone ? 1 : 0);
+            
+            string xpPrefix = xpChange > 0 ? "+" : "";
+            string icon = markAsDone ? "✔" : "❌";
+            string actionWord = markAsDone ? "выполнена" : "провалена";
+
+            await _botClient.SendMessage(
+                chatId: userId, 
+                text: $"{icon} {GetTaskTypeName(taskType)} {actionWord}\n{xpPrefix}{xpChange} XP\n\nПрогресс: {doneCount} / 3");
+
+            if (updatedPlan.MainDone && updatedPlan.MediumDone && updatedPlan.EasyDone && !updatedPlan.IsPlanCompleted) {
+                _taskService.SetPlanCompleted(userId);
                 bool streakIncreased = _streakService.RecordDaySuccess(userId);
-                if (streakIncreased)
-                {
+                await _botClient.SendMessage(chatId: userId, text: "План дня завершён 🔥");
+                if (streakIncreased) {
                     var streak = _streakService.GetStreak(userId);
                     await _botClient.SendMessage(
                         chatId: userId,
-                        text: $"🎉 Отличная работа! Ты полностью выполнил план на день.\n🔥 Твой стрик теперь составляет {streak.CurrentStreak} дней!");
+                        text: $"🔥 Твой стрик теперь составляет {streak.CurrentStreak} дней!");
                 }
             }
         }
+
+        private string GetTaskTypeName(int type) => type switch {
+            1 => "Главная задача",
+            2 => "Средняя задача",
+            3 => "Лёгкая задача",
+            _ => "Задача"
+        };
+
 
         public void DeleteDayPlan(long userId)
         {
@@ -74,17 +126,21 @@ namespace TelegramProductivityBot.Services
             var plan = GetTodayPlan(userId);
             if (plan == null)
             {
-                await _botClient.SendMessage(userId, "На сегодня плана не было. Невозможно построить отчёт.");
+                await _botClient.SendMessage(chatId: userId, text: "На сегодня плана не было. Невозможно построить отчёт.");
                 return;
             }
 
             int tasksDoneToday = _taskService.GetTasksCompletedToday(userId);
             int focusDoneToday = _taskService.GetFocusSessionsCompletedToday(userId);
 
+            string mainStatus = plan.MainDone ? "✔" : plan.MainFailed ? "❌" : "⏳";
+            string mediumStatus = plan.MediumDone ? "✔" : plan.MediumFailed ? "❌" : "⏳";
+            string easyStatus = plan.EasyDone ? "✔" : plan.EasyFailed ? "❌" : "⏳";
+
             string report = "Отчёт за сегодня:\n\n";
-            report += $"🔥 Главная задача:\n{plan.MainTask}\n\n";
-            report += $"⚙️ Средняя задача:\n{plan.MediumTask}\n\n";
-            report += $"🟢 Лёгкая задача:\n{plan.EasyTask}\n\n";
+            report += $"🔥 Главная задача ({mainStatus}):\n{plan.MainTask}\n\n";
+            report += $"⚙️ Средняя задача ({mediumStatus}):\n{plan.MediumTask}\n\n";
+            report += $"🟢 Лёгкая задача ({easyStatus}):\n{plan.EasyTask}\n\n";
             report += $"Всего выполнено задач:\n{tasksDoneToday}\n\n";
             report += $"Фокус-сессий: {focusDoneToday}\n\n";
 
@@ -112,7 +168,7 @@ namespace TelegramProductivityBot.Services
             report += $"Выполнение плана (≈ {Math.Round(averagePercent)}%)\n";
             report += $"Оценка продуктивности:\n{mood}";
 
-            await _botClient.SendMessage(userId, report);
+            await _botClient.SendMessage(chatId: userId, text: report);
         }
     }
 }

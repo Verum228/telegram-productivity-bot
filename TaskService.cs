@@ -27,14 +27,7 @@ namespace TelegramProductivityBot
 
             var command = connection.CreateCommand();
             command.CommandText = @"
-                CREATE TABLE IF NOT EXISTS tasks (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    UserId INTEGER,
-                    Text TEXT,
-                    IsDone INTEGER,
-                    CreatedDate TEXT,
-                    DoneDate TEXT
-                );
+                DROP TABLE IF EXISTS tasks;
                 CREATE TABLE IF NOT EXISTS focus_logs (
                     Id INTEGER PRIMARY KEY AUTOINCREMENT,
                     UserId INTEGER,
@@ -61,8 +54,7 @@ namespace TelegramProductivityBot
                     BestStreak INTEGER DEFAULT 0,
                     LastSuccessDate TEXT
                 );
-                DROP TABLE IF EXISTS day_plans;
-                CREATE TABLE day_plans (
+                CREATE TABLE IF NOT EXISTS day_plans (
                     Id INTEGER PRIMARY KEY AUTOINCREMENT,
                     UserId INTEGER,
                     MainTask TEXT,
@@ -71,6 +63,10 @@ namespace TelegramProductivityBot
                     MainDone INTEGER DEFAULT 0,
                     MediumDone INTEGER DEFAULT 0,
                     EasyDone INTEGER DEFAULT 0,
+                    MainFailed INTEGER DEFAULT 0,
+                    MediumFailed INTEGER DEFAULT 0,
+                    EasyFailed INTEGER DEFAULT 0,
+                    IsPlanCompleted INTEGER DEFAULT 0,
                     CreatedDate TEXT
                 );
                 CREATE TABLE IF NOT EXISTS activity_logs (
@@ -83,87 +79,31 @@ namespace TelegramProductivityBot
             ";
             command.ExecuteNonQuery();
 
-            // Пытаемся добавить колонку DoneDate к старой таблице tasks (если она уже существовала без неё)
+            // Пытаемся добавить новые колонки к day_plans, если они не существуют
             try
             {
-                var alterCommand = connection.CreateCommand();
-                alterCommand.CommandText = "ALTER TABLE tasks ADD COLUMN DoneDate TEXT;";
-                alterCommand.ExecuteNonQuery();
-            }
-            catch 
-            {
-                // Игнорируем ошибку, если колонка уже существует
-            }
+                var alter1 = connection.CreateCommand();
+                alter1.CommandText = "ALTER TABLE day_plans ADD COLUMN MainFailed INTEGER DEFAULT 0;";
+                alter1.ExecuteNonQuery();
+            } catch { }
+            try {
+                var alter2 = connection.CreateCommand();
+                alter2.CommandText = "ALTER TABLE day_plans ADD COLUMN MediumFailed INTEGER DEFAULT 0;";
+                alter2.ExecuteNonQuery();
+            } catch { }
+            try {
+                var alter3 = connection.CreateCommand();
+                alter3.CommandText = "ALTER TABLE day_plans ADD COLUMN EasyFailed INTEGER DEFAULT 0;";
+                alter3.ExecuteNonQuery();
+            } catch { }
+            try {
+                var alter4 = connection.CreateCommand();
+                alter4.CommandText = "ALTER TABLE day_plans ADD COLUMN IsPlanCompleted INTEGER DEFAULT 0;";
+                alter4.ExecuteNonQuery();
+            } catch { }
         }
 
-        /// <summary>
-        /// Добавляет новую задачу для пользователя.
-        /// </summary>
-        public void AddTask(long userId, string text)
-        {
-            using var connection = new SqliteConnection(_connectionString);
-            connection.Open();
 
-            var command = connection.CreateCommand();
-            command.CommandText = @"
-                INSERT INTO tasks (UserId, Text, IsDone, CreatedDate)
-                VALUES ($userId, $text, 0, $createdDate);
-            ";
-            command.Parameters.AddWithValue("$userId", userId);
-            command.Parameters.AddWithValue("$text", text);
-            command.Parameters.AddWithValue("$createdDate", DateTime.UtcNow.ToString("o"));
-
-            command.ExecuteNonQuery();
-        }
-
-        /// <summary>
-        /// Получает список всех задач пользователя.
-        /// </summary>
-        public List<TaskItem> GetTasks(long userId)
-        {
-            var tasks = new List<TaskItem>();
-
-            using var connection = new SqliteConnection(_connectionString);
-            connection.Open();
-
-            var command = connection.CreateCommand();
-            command.CommandText = "SELECT Id, UserId, Text, IsDone, CreatedDate FROM tasks WHERE UserId = $userId";
-            command.Parameters.AddWithValue("$userId", userId);
-
-            using var reader = command.ExecuteReader();
-            while (reader.Read())
-            {
-                tasks.Add(new TaskItem
-                {
-                    Id = reader.GetInt32(0),
-                    UserId = reader.GetInt64(1),
-                    Text = reader.GetString(2),
-                    IsDone = reader.GetInt32(3) == 1,
-                    CreatedDate = DateTime.Parse(reader.GetString(4))
-                });
-            }
-
-            return tasks;
-        }
-
-        /// <summary>
-        /// Отмечает конкретную задачу пользователя как выполненную.
-        /// Возвращает true, если задача найдена и обновлена.
-        /// </summary>
-        public bool MarkTaskDone(long userId, int taskId)
-        {
-            using var connection = new SqliteConnection(_connectionString);
-            connection.Open();
-
-            var command = connection.CreateCommand();
-            command.CommandText = "UPDATE tasks SET IsDone = 1, DoneDate = $doneDate WHERE Id = $id AND UserId = $userId";
-            command.Parameters.AddWithValue("$id", taskId);
-            command.Parameters.AddWithValue("$userId", userId);
-            command.Parameters.AddWithValue("$doneDate", DateTime.UtcNow.ToString("o"));
-
-            int rowsAffected = command.ExecuteNonQuery();
-            return rowsAffected > 0;
-        }
 
         /// <summary>
         /// Логирует результат прошедшей фокус-сессии.
@@ -230,21 +170,17 @@ namespace TelegramProductivityBot
         }
 
         /// <summary>
-        /// Подсчитывает количество выполненных задач у пользователя за сегодняшний день (UTC).
+        /// Подсчитывает количество выполненных задач у пользователя за сегодняшний день (UTC) через План Дня.
         /// </summary>
         public int GetTasksCompletedToday(long userId)
         {
-            using var connection = new SqliteConnection(_connectionString);
-            connection.Open();
-
-            var command = connection.CreateCommand();
-            command.CommandText = "SELECT COUNT(*) FROM tasks WHERE UserId = $userId AND IsDone = 1 AND DoneDate LIKE $todayPattern";
-            string todayString = DateTime.UtcNow.ToString("yyyy-MM-dd") + "%";
-            command.Parameters.AddWithValue("$userId", userId);
-            command.Parameters.AddWithValue("$todayPattern", todayString);
-
-            var result = command.ExecuteScalar();
-            return Convert.ToInt32(result);
+            var plan = GetTodayPlan(userId);
+            if (plan == null) return 0;
+            int count = 0;
+            if (plan.MainDone) count++;
+            if (plan.MediumDone) count++;
+            if (plan.EasyDone) count++;
+            return count;
         }
 
         /// <summary>
@@ -349,8 +285,8 @@ namespace TelegramProductivityBot
             // Вставляем новый
             var insertCommand = connection.CreateCommand();
             insertCommand.CommandText = @"
-                INSERT INTO day_plans (UserId, MainTask, MediumTask, EasyTask, MainDone, MediumDone, EasyDone, CreatedDate)
-                VALUES ($userId, $mainTask, $mediumTask, $easyTask, 0, 0, 0, $createdDate);
+                INSERT INTO day_plans (UserId, MainTask, MediumTask, EasyTask, MainDone, MediumDone, EasyDone, MainFailed, MediumFailed, EasyFailed, IsPlanCompleted, CreatedDate)
+                VALUES ($userId, $mainTask, $mediumTask, $easyTask, 0, 0, 0, 0, 0, 0, 0, $createdDate);
             ";
             insertCommand.Parameters.AddWithValue("$userId", plan.UserId);
             insertCommand.Parameters.AddWithValue("$mainTask", plan.MainTask);
@@ -369,7 +305,7 @@ namespace TelegramProductivityBot
             connection.Open();
 
             var command = connection.CreateCommand();
-            command.CommandText = "SELECT Id, UserId, MainTask, MediumTask, EasyTask, MainDone, MediumDone, EasyDone, CreatedDate FROM day_plans WHERE UserId = $userId AND CreatedDate LIKE $todayPattern ORDER BY Id DESC LIMIT 1";
+            command.CommandText = "SELECT Id, UserId, MainTask, MediumTask, EasyTask, MainDone, MediumDone, EasyDone, MainFailed, MediumFailed, EasyFailed, IsPlanCompleted, CreatedDate FROM day_plans WHERE UserId = $userId AND CreatedDate LIKE $todayPattern ORDER BY Id DESC LIMIT 1";
             string todayString = DateTime.UtcNow.ToString("yyyy-MM-dd") + "%";
             command.Parameters.AddWithValue("$userId", userId);
             command.Parameters.AddWithValue("$todayPattern", todayString);
@@ -387,7 +323,11 @@ namespace TelegramProductivityBot
                     MainDone = reader.GetInt32(5) == 1,
                     MediumDone = reader.GetInt32(6) == 1,
                     EasyDone = reader.GetInt32(7) == 1,
-                    CreatedDate = DateTime.Parse(reader.GetString(8))
+                    MainFailed = reader.GetInt32(8) == 1,
+                    MediumFailed = reader.GetInt32(9) == 1,
+                    EasyFailed = reader.GetInt32(10) == 1,
+                    IsPlanCompleted = reader.GetInt32(11) == 1,
+                    CreatedDate = DateTime.Parse(reader.GetString(12))
                 };
             }
             return null;
@@ -421,9 +361,9 @@ namespace TelegramProductivityBot
         }
 
         /// <summary>
-        /// Обновляет статус конкретной задачи (выполнено) в плане на день
+        /// Обновляет статус конкретной задачи (выполнено или провалено) в плане на день
         /// </summary>
-        public void MarkDayPlanTaskDone(long userId, int taskType)
+        public void SetDayPlanTaskStatus(long userId, int taskType, bool isDone, bool isFailed)
         {
             var plan = GetTodayPlan(userId);
             if (plan == null) return;
@@ -431,7 +371,7 @@ namespace TelegramProductivityBot
             using var connection = new SqliteConnection(_connectionString);
             connection.Open();
 
-            string column = taskType switch
+            string doneColumn = taskType switch
             {
                 1 => "MainDone",
                 2 => "MediumDone",
@@ -439,10 +379,32 @@ namespace TelegramProductivityBot
                 _ => "MainDone"
             };
 
+            string failedColumn = taskType switch
+            {
+                1 => "MainFailed",
+                2 => "MediumFailed",
+                3 => "EasyFailed",
+                _ => "MainFailed"
+            };
+
             var command = connection.CreateCommand();
-            command.CommandText = $"UPDATE day_plans SET {column} = 1 WHERE Id = $id";
+            command.CommandText = $"UPDATE day_plans SET {doneColumn} = $done, {failedColumn} = $failed WHERE Id = $id";
+            command.Parameters.AddWithValue("$done", isDone ? 1 : 0);
+            command.Parameters.AddWithValue("$failed", isFailed ? 1 : 0);
             command.Parameters.AddWithValue("$id", plan.Id);
 
+            command.ExecuteNonQuery();
+        }
+
+        public void SetPlanCompleted(long userId)
+        {
+            var plan = GetTodayPlan(userId);
+            if (plan == null) return;
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+            var command = connection.CreateCommand();
+            command.CommandText = $"UPDATE day_plans SET IsPlanCompleted = 1 WHERE Id = $id";
+            command.Parameters.AddWithValue("$id", plan.Id);
             command.ExecuteNonQuery();
         }
 
@@ -581,6 +543,7 @@ namespace TelegramProductivityBot
             var currentXp = Convert.ToInt32(getCommand.ExecuteScalar());
 
             int newXp = currentXp + amount;
+            if (newXp < 0) newXp = 0;
             int newLevel = (newXp / 100) + 1;
 
             var updateCommand = connection.CreateCommand();

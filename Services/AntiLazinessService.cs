@@ -14,15 +14,28 @@ namespace TelegramProductivityBot.Services
     {
         private readonly ITelegramBotClient _botClient;
         private readonly TaskService _taskService;
+        private readonly StatsService _statsService;
         private readonly CancellationTokenSource _cts;
 
         // Память пропущенных чеков для hard mode
         private readonly ConcurrentDictionary<long, int> _missedChecks;
 
-        public AntiLazinessService(ITelegramBotClient botClient, TaskService taskService)
+        private readonly string[] _hardModeQuestions = new[]
+        {
+            "Что ты делаешь сейчас?",
+            "Ты в фокусе?",
+            "Какая задача сейчас?",
+            "Сколько минут работаешь?",
+            "Ты отвлёкся?",
+            "Назови следующий шаг",
+            "Что мешает работать?"
+        };
+
+        public AntiLazinessService(ITelegramBotClient botClient, TaskService taskService, StatsService statsService)
         {
             _botClient = botClient;
             _taskService = taskService;
+            _statsService = statsService;
             _cts = new CancellationTokenSource();
             _missedChecks = new ConcurrentDictionary<long, int>();
 
@@ -40,7 +53,7 @@ namespace TelegramProductivityBot.Services
         {
             _taskService.SetSetting(userId, "antilen", enabled ? "1" : "0");
             string status = enabled ? "включён" : "выключен";
-            await _botClient.SendMessage(userId, $"Анти-лень режим {status}. Ожидайте напоминания.");
+            await _botClient.SendMessage(chatId: userId, text: $"Анти-лень режим {status}. Ожидайте напоминания.");
         }
 
         public async Task SetHardModeAsync(long userId, bool enabled)
@@ -48,7 +61,7 @@ namespace TelegramProductivityBot.Services
             _taskService.SetSetting(userId, "hardmode", enabled ? "1" : "0");
             if (enabled) _missedChecks[userId] = 0; // Сбрасываем счётчик пропущенных
             string status = enabled ? "включён" : "выключен";
-            await _botClient.SendMessage(userId, $"Жёсткий режим (hardmode) {status}. Бот будет спрашивать, чем вы заняты.");
+            await _botClient.SendMessage(chatId: userId, text: $"Жёсткий режим (hardmode) {status}. Бот будет спрашивать, чем вы заняты.");
         }
 
         /// <summary>
@@ -80,7 +93,7 @@ namespace TelegramProductivityBot.Services
                         {
                             if (_taskService.GetTasksCompletedToday(userId) == 0)
                             {
-                                await _botClient.SendMessage(userId, "Ты ещё не сделал ни одной задачи. Начни с самой простой — /addtask ...", cancellationToken: token);
+                                await _botClient.SendMessage(chatId: userId, text: "Ты ещё не сделал ни одной задачи из плана дня. Обязательно начни с самой важной!", cancellationToken: token);
                             }
                         }
                         // Ждём 1 минуту, чтобы не спамить в 12:00
@@ -93,7 +106,7 @@ namespace TelegramProductivityBot.Services
                         {
                             if (_taskService.GetTasksCompletedToday(userId) == 0)
                             {
-                                await _botClient.SendMessage(userId, "Ещё не было выполнения задач сегодня. Хочешь включить жёсткий режим? (/hardmode on)", cancellationToken: token);
+                                await _botClient.SendMessage(chatId: userId, text: "Ещё не было выполнения задач сегодня. Хочешь включить жёсткий режим? (Настройки -> Hard mode ВКЛ)", cancellationToken: token);
                             }
                         }
                         await Task.Delay(TimeSpan.FromMinutes(1), token);
@@ -117,6 +130,7 @@ namespace TelegramProductivityBot.Services
         /// </summary>
         private async Task HardModeLoopAsync(CancellationToken token)
         {
+            var rnd = new Random();
             try
             {
                 while (!token.IsCancellationRequested)
@@ -136,14 +150,23 @@ namespace TelegramProductivityBot.Services
 
                             if (missed >= 3)
                             {
-                                // Наказываем
-                                _taskService.AddTask(userId, "ШТРАФ: Сделать дополнительную полезную задачу!");
-                                await _botClient.SendMessage(userId, "Ты не отвечаешь 3 раза подряд! Добавлена штрафная задача. Проверь /tasks.", cancellationToken: token);
+                                // Наказываем -15 XP вместо задачи
+                                _statsService.AddXP(userId, -15);
+                                await _botClient.SendMessage(
+                                    chatId: userId,
+                                    text: "Ты не отвечаешь 3 раза подряд! Выписан штраф -15 XP ❌",
+                                    cancellationToken: token);
+                                    
                                 _missedChecks[userId] = 0; // Сбрасываем после штрафа
                             }
                             else
                             {
-                                await _botClient.SendMessage(userId, "Что делаешь прямо сейчас?", cancellationToken: token);
+                                // Выбираем случайный вопрос
+                                string question = _hardModeQuestions[rnd.Next(_hardModeQuestions.Length)];
+                                await _botClient.SendMessage(
+                                    chatId: userId,
+                                    text: question,
+                                    cancellationToken: token);
                             }
                         }
                     }
