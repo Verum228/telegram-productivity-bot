@@ -106,9 +106,9 @@ namespace TelegramProductivityBot.Services
         }
 
         private string GetTaskTypeName(int type) => type switch {
-            1 => "Главная задача",
-            2 => "Средняя задача",
-            3 => "Лёгкая задача",
+            1 => "Главная",
+            2 => "Средняя",
+            3 => "Лёгкая",
             _ => "Задача"
         };
 

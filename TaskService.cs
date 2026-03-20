@@ -80,34 +80,144 @@ namespace TelegramProductivityBot
             command.ExecuteNonQuery();
 
             // Пытаемся добавить новые колонки к day_plans, если они не существуют
-            try
+            string[] alterations = new[]
             {
-                var alter1 = connection.CreateCommand();
-                alter1.CommandText = "ALTER TABLE day_plans ADD COLUMN MainFailed INTEGER DEFAULT 0;";
-                alter1.ExecuteNonQuery();
-            } catch { }
-            try {
-                var alter2 = connection.CreateCommand();
-                alter2.CommandText = "ALTER TABLE day_plans ADD COLUMN MediumFailed INTEGER DEFAULT 0;";
-                alter2.ExecuteNonQuery();
-            } catch { }
-            try {
-                var alter3 = connection.CreateCommand();
-                alter3.CommandText = "ALTER TABLE day_plans ADD COLUMN EasyFailed INTEGER DEFAULT 0;";
-                alter3.ExecuteNonQuery();
-            } catch { }
-            try {
-                var alter4 = connection.CreateCommand();
-                alter4.CommandText = "ALTER TABLE day_plans ADD COLUMN IsPlanCompleted INTEGER DEFAULT 0;";
-                alter4.ExecuteNonQuery();
-            } catch { }
+                "ALTER TABLE day_plans ADD COLUMN MainFailed INTEGER DEFAULT 0;",
+                "ALTER TABLE day_plans ADD COLUMN MediumFailed INTEGER DEFAULT 0;",
+                "ALTER TABLE day_plans ADD COLUMN EasyFailed INTEGER DEFAULT 0;",
+                "ALTER TABLE day_plans ADD COLUMN IsPlanCompleted INTEGER DEFAULT 0;",
+                "ALTER TABLE day_plans ADD COLUMN MainDeadline TEXT NULL;",
+                "ALTER TABLE day_plans ADD COLUMN MediumDeadline TEXT NULL;",
+                "ALTER TABLE day_plans ADD COLUMN EasyDeadline TEXT NULL;",
+                "ALTER TABLE day_plans ADD COLUMN MainReminderStatus INTEGER DEFAULT 0;",
+                "ALTER TABLE day_plans ADD COLUMN MediumReminderStatus INTEGER DEFAULT 0;",
+                "ALTER TABLE day_plans ADD COLUMN EasyReminderStatus INTEGER DEFAULT 0;",
+                "ALTER TABLE day_plans ADD COLUMN MainOverdueNotified INTEGER DEFAULT 0;",
+                "ALTER TABLE day_plans ADD COLUMN MediumOverdueNotified INTEGER DEFAULT 0;",
+                "ALTER TABLE day_plans ADD COLUMN EasyOverdueNotified INTEGER DEFAULT 0;"
+            };
+
+            foreach (var alt in alterations)
+            {
+                try
+                {
+                    var alterCmd = connection.CreateCommand();
+                    alterCmd.CommandText = alt;
+                    alterCmd.ExecuteNonQuery();
+                }
+                catch { } // Игнорируем ошибки (значит колонка уже существует)
+            }
         }
 
+        // --- ДЕДЛАЙНЫ ---
 
+        public void SetTaskDeadline(long userId, int taskType, string? time)
+        {
+            var plan = GetTodayPlan(userId);
+            if (plan == null) return;
 
-        /// <summary>
-        /// Логирует результат прошедшей фокус-сессии.
-        /// </summary>
+            string dlColumn = taskType switch { 1 => "MainDeadline", 2 => "MediumDeadline", _ => "EasyDeadline" };
+            string remColumn = taskType switch { 1 => "MainReminderStatus", 2 => "MediumReminderStatus", _ => "EasyReminderStatus" };
+            string overColumn = taskType switch { 1 => "MainOverdueNotified", 2 => "MediumOverdueNotified", _ => "EasyOverdueNotified" };
+
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+            var command = connection.CreateCommand();
+            
+            // Сбрасываем флаги напоминаний при изменении дедлайна
+            command.CommandText = $"UPDATE day_plans SET {dlColumn} = $time, {remColumn} = 0, {overColumn} = 0 WHERE Id = $id";
+            command.Parameters.AddWithValue("$time", time != null ? (object)time : DBNull.Value);
+            command.Parameters.AddWithValue("$id", plan.Id);
+            command.ExecuteNonQuery();
+        }
+
+        public void SetTaskReminderStatus(long userId, int taskType, int status)
+        {
+            var plan = GetTodayPlan(userId);
+            if (plan == null) return;
+            string col = taskType switch { 1 => "MainReminderStatus", 2 => "MediumReminderStatus", _ => "EasyReminderStatus" };
+
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+            var command = connection.CreateCommand();
+            command.CommandText = $"UPDATE day_plans SET {col} = $status WHERE Id = $id";
+            command.Parameters.AddWithValue("$status", status);
+            command.Parameters.AddWithValue("$id", plan.Id);
+            command.ExecuteNonQuery();
+        }
+
+        public void SetTaskOverdueNotified(long userId, int taskType)
+        {
+            var plan = GetTodayPlan(userId);
+            if (plan == null) return;
+            string col = taskType switch { 1 => "MainOverdueNotified", 2 => "MediumOverdueNotified", _ => "EasyOverdueNotified" };
+
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+            var command = connection.CreateCommand();
+            command.CommandText = $"UPDATE day_plans SET {col} = 1 WHERE Id = $id";
+            command.Parameters.AddWithValue("$id", plan.Id);
+            command.ExecuteNonQuery();
+        }
+
+        public List<DayPlan> GetActivePlansWithDeadlines()
+        {
+            var plans = new List<DayPlan>();
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+            var command = connection.CreateCommand();
+            string todayPattern = DateTime.UtcNow.ToString("yyyy-MM-dd") + "%";
+            
+            // Ищем активные планы, где есть хоть один дедлайн
+            command.CommandText = @"
+                SELECT Id, UserId, MainTask, MediumTask, EasyTask, MainDone, MediumDone, EasyDone, MainFailed, MediumFailed, EasyFailed, IsPlanCompleted, CreatedDate,
+                       MainDeadline, MediumDeadline, EasyDeadline, MainReminderStatus, MediumReminderStatus, EasyReminderStatus, MainOverdueNotified, MediumOverdueNotified, EasyOverdueNotified
+                FROM day_plans 
+                WHERE CreatedDate LIKE $todayPattern 
+                  AND IsPlanCompleted = 0 
+                  AND (MainDeadline IS NOT NULL OR MediumDeadline IS NOT NULL OR EasyDeadline IS NOT NULL)";
+            
+            command.Parameters.AddWithValue("$todayPattern", todayPattern);
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                plans.Add(MapDayPlan(reader));
+            }
+            return plans;
+        }
+
+        private DayPlan MapDayPlan(SqliteDataReader reader)
+        {
+            return new DayPlan
+            {
+                Id = reader.GetInt32(0),
+                UserId = reader.GetInt64(1),
+                MainTask = reader.GetString(2),
+                MediumTask = reader.GetString(3),
+                EasyTask = reader.GetString(4),
+                MainDone = reader.GetInt32(5) == 1,
+                MediumDone = reader.GetInt32(6) == 1,
+                EasyDone = reader.GetInt32(7) == 1,
+                MainFailed = reader.GetInt32(8) == 1,
+                MediumFailed = reader.GetInt32(9) == 1,
+                EasyFailed = reader.GetInt32(10) == 1,
+                IsPlanCompleted = reader.GetInt32(11) == 1,
+                CreatedDate = DateTime.Parse(reader.GetString(12)),
+                MainDeadline = reader.IsDBNull(13) ? null : reader.GetString(13),
+                MediumDeadline = reader.IsDBNull(14) ? null : reader.GetString(14),
+                EasyDeadline = reader.IsDBNull(15) ? null : reader.GetString(15),
+                MainReminderStatus = reader.GetInt32(16),
+                MediumReminderStatus = reader.GetInt32(17),
+                EasyReminderStatus = reader.GetInt32(18),
+                MainOverdueNotified = reader.GetInt32(19) == 1,
+                MediumOverdueNotified = reader.GetInt32(20) == 1,
+                EasyOverdueNotified = reader.GetInt32(21) == 1
+            };
+        }
+
+        // --- ОСТАЛЬНОЙ КОД ---
+
         public void LogFocusSession(long userId, int duration, bool isSuccess)
         {
             using var connection = new SqliteConnection(_connectionString);
@@ -126,9 +236,6 @@ namespace TelegramProductivityBot
             command.ExecuteNonQuery();
         }
 
-        /// <summary>
-        /// Сохраняет или обновляет настройку пользователя.
-        /// </summary>
         public void SetSetting(long userId, string key, string value)
         {
             using var connection = new SqliteConnection(_connectionString);
@@ -147,9 +254,6 @@ namespace TelegramProductivityBot
             command.ExecuteNonQuery();
         }
 
-        /// <summary>
-        /// Возвращает список ID пользователей, у которых установлена нужная настройка.
-        /// </summary>
         public List<long> GetUsersWithSetting(string key, string value)
         {
             var userIds = new List<long>();
@@ -169,9 +273,6 @@ namespace TelegramProductivityBot
             return userIds;
         }
 
-        /// <summary>
-        /// Подсчитывает количество выполненных задач у пользователя за сегодняшний день (UTC) через План Дня.
-        /// </summary>
         public int GetTasksCompletedToday(long userId)
         {
             var plan = GetTodayPlan(userId);
@@ -183,9 +284,45 @@ namespace TelegramProductivityBot
             return count;
         }
 
-        /// <summary>
-        /// Подсчитывает количество выполненных фокус-сессий за сегодняшний день (UTC).
-        /// </summary>
+        public List<DayPlan> GetPast7DaysPlans(long userId)
+        {
+            var plans = new List<DayPlan>();
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+
+            var command = connection.CreateCommand();
+            command.CommandText = @"
+                SELECT Id, UserId, MainTask, MainDone, MediumTask, MediumDone, EasyTask, EasyDone, CreatedDate, IsPlanCompleted,
+                       MainDeadline, MediumDeadline, EasyDeadline
+                FROM day_plans
+                WHERE UserId = $userId AND CreatedDate >= date('now', '-7 days')
+                ORDER BY CreatedDate ASC";
+            command.Parameters.AddWithValue("$userId", userId);
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                plans.Add(new DayPlan
+                {
+                    Id = reader.GetInt32(0),
+                    UserId = reader.GetInt64(1),
+                    MainTask = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                    MainDone = reader.GetInt32(3) == 1,
+                    MediumTask = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                    MediumDone = reader.GetInt32(5) == 1,
+                    EasyTask = reader.IsDBNull(6) ? "" : reader.GetString(6),
+                    EasyDone = reader.GetInt32(7) == 1,
+                    CreatedDate = DateTime.Parse(reader.GetString(8)), // Changed from Date to CreatedDate
+                    IsPlanCompleted = !reader.IsDBNull(9) && reader.GetInt32(9) == 1,
+                    MainDeadline = reader.IsDBNull(10) ? null : reader.GetString(10),
+                    MediumDeadline = reader.IsDBNull(11) ? null : reader.GetString(11),
+                    EasyDeadline = reader.IsDBNull(12) ? null : reader.GetString(12)
+                });
+            }
+
+            return plans;
+        }
+
         public int GetFocusSessionsCompletedToday(long userId)
         {
             using var connection = new SqliteConnection(_connectionString);
@@ -203,9 +340,6 @@ namespace TelegramProductivityBot
 
         // --- STREAKS ---
 
-        /// <summary>
-        /// Возвращает или создает стрик для пользователя.
-        /// </summary>
         public UserStreak GetUserStreak(long userId)
         {
             using var connection = new SqliteConnection(_connectionString);
@@ -227,7 +361,6 @@ namespace TelegramProductivityBot
                 };
             }
 
-            // Создаем новую запись, если нет
             var insertCmd = connection.CreateCommand();
             insertCmd.CommandText = "INSERT INTO streaks (UserId) VALUES ($userId)";
             insertCmd.Parameters.AddWithValue("$userId", userId);
@@ -242,9 +375,6 @@ namespace TelegramProductivityBot
             };
         }
 
-        /// <summary>
-        /// Обновляет стрик пользователя в базе.
-        /// </summary>
         public void UpdateUserStreak(UserStreak streak)
         {
             using var connection = new SqliteConnection(_connectionString);
@@ -266,9 +396,6 @@ namespace TelegramProductivityBot
 
         // --- DAY PLANS ---
 
-        /// <summary>
-        /// Сохраняет или обновляет план на сегодня (заменяет, если уже есть).
-        /// </summary>
         public void SaveTodayPlan(DayPlan plan)
         {
             using var connection = new SqliteConnection(_connectionString);
@@ -285,27 +412,34 @@ namespace TelegramProductivityBot
             // Вставляем новый
             var insertCommand = connection.CreateCommand();
             insertCommand.CommandText = @"
-                INSERT INTO day_plans (UserId, MainTask, MediumTask, EasyTask, MainDone, MediumDone, EasyDone, MainFailed, MediumFailed, EasyFailed, IsPlanCompleted, CreatedDate)
-                VALUES ($userId, $mainTask, $mediumTask, $easyTask, 0, 0, 0, 0, 0, 0, 0, $createdDate);
+                INSERT INTO day_plans (UserId, MainTask, MediumTask, EasyTask, MainDone, MediumDone, EasyDone, MainFailed, MediumFailed, EasyFailed, IsPlanCompleted, CreatedDate, 
+                                       MainDeadline, MediumDeadline, EasyDeadline, MainReminderStatus, MediumReminderStatus, EasyReminderStatus, MainOverdueNotified, MediumOverdueNotified, EasyOverdueNotified)
+                VALUES ($userId, $mainTask, $mediumTask, $easyTask, 0, 0, 0, 0, 0, 0, 0, $createdDate, 
+                        $mainDl, $medDl, $easyDl, 0, 0, 0, 0, 0, 0);
             ";
             insertCommand.Parameters.AddWithValue("$userId", plan.UserId);
             insertCommand.Parameters.AddWithValue("$mainTask", plan.MainTask);
             insertCommand.Parameters.AddWithValue("$mediumTask", plan.MediumTask);
             insertCommand.Parameters.AddWithValue("$easyTask", plan.EasyTask);
             insertCommand.Parameters.AddWithValue("$createdDate", DateTime.UtcNow.ToString("o"));
+            insertCommand.Parameters.AddWithValue("$mainDl", plan.MainDeadline != null ? (object)plan.MainDeadline : DBNull.Value);
+            insertCommand.Parameters.AddWithValue("$medDl", plan.MediumDeadline != null ? (object)plan.MediumDeadline : DBNull.Value);
+            insertCommand.Parameters.AddWithValue("$easyDl", plan.EasyDeadline != null ? (object)plan.EasyDeadline : DBNull.Value);
             insertCommand.ExecuteNonQuery();
         }
 
-        /// <summary>
-        /// Получает план на сегодняшний день. Если нет, возвращает null.
-        /// </summary>
         public DayPlan? GetTodayPlan(long userId)
         {
             using var connection = new SqliteConnection(_connectionString);
             connection.Open();
 
             var command = connection.CreateCommand();
-            command.CommandText = "SELECT Id, UserId, MainTask, MediumTask, EasyTask, MainDone, MediumDone, EasyDone, MainFailed, MediumFailed, EasyFailed, IsPlanCompleted, CreatedDate FROM day_plans WHERE UserId = $userId AND CreatedDate LIKE $todayPattern ORDER BY Id DESC LIMIT 1";
+            command.CommandText = @"
+                SELECT Id, UserId, MainTask, MediumTask, EasyTask, MainDone, MediumDone, EasyDone, MainFailed, MediumFailed, EasyFailed, IsPlanCompleted, CreatedDate,
+                       MainDeadline, MediumDeadline, EasyDeadline, MainReminderStatus, MediumReminderStatus, EasyReminderStatus, MainOverdueNotified, MediumOverdueNotified, EasyOverdueNotified
+                FROM day_plans 
+                WHERE UserId = $userId AND CreatedDate LIKE $todayPattern 
+                ORDER BY Id DESC LIMIT 1";
             string todayString = DateTime.UtcNow.ToString("yyyy-MM-dd") + "%";
             command.Parameters.AddWithValue("$userId", userId);
             command.Parameters.AddWithValue("$todayPattern", todayString);
@@ -313,29 +447,11 @@ namespace TelegramProductivityBot
             using var reader = command.ExecuteReader();
             if (reader.Read())
             {
-                return new DayPlan
-                {
-                    Id = reader.GetInt32(0),
-                    UserId = reader.GetInt64(1),
-                    MainTask = reader.GetString(2),
-                    MediumTask = reader.GetString(3),
-                    EasyTask = reader.GetString(4),
-                    MainDone = reader.GetInt32(5) == 1,
-                    MediumDone = reader.GetInt32(6) == 1,
-                    EasyDone = reader.GetInt32(7) == 1,
-                    MainFailed = reader.GetInt32(8) == 1,
-                    MediumFailed = reader.GetInt32(9) == 1,
-                    EasyFailed = reader.GetInt32(10) == 1,
-                    IsPlanCompleted = reader.GetInt32(11) == 1,
-                    CreatedDate = DateTime.Parse(reader.GetString(12))
-                };
+                return MapDayPlan(reader);
             }
             return null;
         }
 
-        /// <summary>
-        /// Обновляет текст конкретной задачи в плане на день
-        /// </summary>
         public void UpdateDayPlanTask(long userId, int taskType, string newText)
         {
             var plan = GetTodayPlan(userId);
@@ -360,9 +476,6 @@ namespace TelegramProductivityBot
             command.ExecuteNonQuery();
         }
 
-        /// <summary>
-        /// Обновляет статус конкретной задачи (выполнено или провалено) в плане на день
-        /// </summary>
         public void SetDayPlanTaskStatus(long userId, int taskType, bool isDone, bool isFailed)
         {
             var plan = GetTodayPlan(userId);
@@ -408,9 +521,6 @@ namespace TelegramProductivityBot
             command.ExecuteNonQuery();
         }
 
-        /// <summary>
-        /// Удаляет сегодняшний план пользователя
-        /// </summary>
         public void DeleteDayPlan(long userId)
         {
             using var connection = new SqliteConnection(_connectionString);
@@ -424,9 +534,6 @@ namespace TelegramProductivityBot
             command.ExecuteNonQuery();
         }
 
-        /// <summary>
-        /// Возвращает количество полностью выполненных планов за последние N дней.
-        /// </summary>
         public int GetCompletedDayPlansLastDays(long userId, int days)
         {
             using var connection = new SqliteConnection(_connectionString);
@@ -449,9 +556,8 @@ namespace TelegramProductivityBot
             return Convert.ToInt32(result);
         }
 
-        /// <summary>
-        /// Логирует активность пользователя (задача оценена, focus завершен, XP получен).
-        /// </summary>
+        // --- ЛОГИ И СТАТИСТИКА ---
+
         public void LogActivity(long userId, string type, int value)
         {
             using var connection = new SqliteConnection(_connectionString);
@@ -469,16 +575,12 @@ namespace TelegramProductivityBot
             command.ExecuteNonQuery();
         }
 
-        /// <summary>
-        /// Возвращает сумму Value для указанного типа активности за последние N дней
-        /// </summary>
         public int GetActivitySumLastDays(long userId, string type, int days)
         {
             using var connection = new SqliteConnection(_connectionString);
             connection.Open();
 
             var command = connection.CreateCommand();
-            // Получаем дату N дней назад в формате ISO8601
             string dateThreshold = DateTime.UtcNow.AddDays(-days).ToString("o");
 
             command.CommandText = "SELECT SUM(Value) FROM activity_logs WHERE UserId = $userId AND Type = $type AND CreatedDate >= $date";
@@ -492,9 +594,6 @@ namespace TelegramProductivityBot
             return 0;
         }
 
-        /// <summary>
-        /// Возвращает список всех уникальных пользователей, которые когда-либо взаимодействовали с ботом.
-        /// </summary>
         public List<long> GetAllUniqueUsers()
         {
             var users = new HashSet<long>();
@@ -502,7 +601,6 @@ namespace TelegramProductivityBot
             connection.Open();
 
             var command = connection.CreateCommand();
-            // Можно смотреть по user_stats, так как туда попадают все при первой стате
             command.CommandText = "SELECT DISTINCT UserId FROM user_stats";
             using var reader = command.ExecuteReader();
             while (reader.Read())
@@ -512,9 +610,6 @@ namespace TelegramProductivityBot
             return new List<long>(users);
         }
 
-        /// <summary>
-        /// Добавляет пользователя в статистику, если его там нет.
-        /// </summary>
         private void EnsureUserExistsInStats(long userId)
         {
             using var connection = new SqliteConnection(_connectionString);
@@ -526,9 +621,6 @@ namespace TelegramProductivityBot
             command.ExecuteNonQuery();
         }
 
-        /// <summary>
-        /// Добавляет XP пользователю и обновляет уровень (100 XP = 1 лвл).
-        /// </summary>
         public void AddXPToUser(long userId, int amount)
         {
             EnsureUserExistsInStats(userId);
@@ -536,7 +628,6 @@ namespace TelegramProductivityBot
             using var connection = new SqliteConnection(_connectionString);
             connection.Open();
 
-            // Читаем текущий XP
             var getCommand = connection.CreateCommand();
             getCommand.CommandText = "SELECT XP FROM user_stats WHERE UserId = $userId";
             getCommand.Parameters.AddWithValue("$userId", userId);
@@ -554,14 +645,10 @@ namespace TelegramProductivityBot
             updateCommand.ExecuteNonQuery();
         }
 
-        /// <summary>
-        /// Увеличивает счетчик задачи или фокус-сессии.
-        /// </summary>
         public void IncrementUserStat(long userId, string columnName)
         {
             EnsureUserExistsInStats(userId);
 
-            // Защита от SQL-инъекций (используем только разрешенные колонки)
             if (columnName != "TasksCompleted" && columnName != "FocusSessions")
                 return;
 
@@ -574,9 +661,6 @@ namespace TelegramProductivityBot
             command.ExecuteNonQuery();
         }
 
-        /// <summary>
-        /// Получает профиль текущего пользователя со статистикой (модель UserProfile).
-        /// </summary>
         public UserProfile GetUserProfile(long userId)
         {
             EnsureUserExistsInStats(userId);

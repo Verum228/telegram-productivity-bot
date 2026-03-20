@@ -27,6 +27,8 @@ namespace TelegramProductivityBot
         private readonly LongTaskService _longTaskService;
         private readonly StreakService _streakService;
         private readonly AdviceService _adviceService;
+        private readonly DeadlineService _deadlineService;
+        private readonly StatisticsService _statisticsService;
         private readonly CancellationTokenSource _cts;
 
         public BotService(string botToken)
@@ -45,9 +47,11 @@ namespace TelegramProductivityBot
             _reminderService = new ReminderService(_botClient, _taskService);
             _longTaskService = new LongTaskService();
             _adviceService = new AdviceService(_taskService, _streakService);
+            _deadlineService = new DeadlineService(_botClient, _taskService, _dayPlanService, _statsService);
+            _statisticsService = new StatisticsService(_taskService);
             
             // Инициализируем обработчик команд, передавая ему клиент бота и сервисы
-            _commandHandler = new CommandHandler(_botClient, _taskService, _focusService, _antiLazinessService, _statsService, _dayPlanService, _activityService, _longTaskService, _streakService, _adviceService);
+            _commandHandler = new CommandHandler(_botClient, _taskService, _focusService, _antiLazinessService, _statsService, _dayPlanService, _activityService, _longTaskService, _streakService, _adviceService, _statisticsService);
             
             // Источник токена отмены для корректной остановки бота
             _cts = new CancellationTokenSource();

@@ -18,6 +18,19 @@ namespace TelegramProductivityBot.Models
         public bool MainFailed { get; set; }
         public bool MediumFailed { get; set; }
         public bool EasyFailed { get; set; }
+
+        public string? MainDeadline { get; set; }
+        public string? MediumDeadline { get; set; }
+        public string? EasyDeadline { get; set; }
+
+        public int MainReminderStatus { get; set; }
+        public int MediumReminderStatus { get; set; }
+        public int EasyReminderStatus { get; set; }
+
+        public bool MainOverdueNotified { get; set; }
+        public bool MediumOverdueNotified { get; set; }
+        public bool EasyOverdueNotified { get; set; }
+
         public bool IsPlanCompleted { get; set; }
         public DateTime CreatedDate { get; set; }
     }

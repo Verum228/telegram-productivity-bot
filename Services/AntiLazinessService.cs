@@ -22,13 +22,13 @@ namespace TelegramProductivityBot.Services
 
         private readonly string[] _hardModeQuestions = new[]
         {
-            "Что ты делаешь сейчас?",
-            "Ты в фокусе?",
-            "Какая задача сейчас?",
-            "Сколько минут работаешь?",
-            "Ты отвлёкся?",
-            "Назови следующий шаг",
-            "Что мешает работать?"
+            "⏳ Чем ты сейчас занимаешься?",
+            "⚠️ Ты отвлёкся?",
+            "🔥 Вернись к задаче!",
+            "⏳ Время идёт. Чем занят?",
+            "⚠️ На чём сейчас фокус?",
+            "🔥 Пора продолжать работу!",
+            "⏳ Как успехи? Вернись к задаче!"
         };
 
         public AntiLazinessService(ITelegramBotClient botClient, TaskService taskService, StatsService statsService)
@@ -54,6 +54,18 @@ namespace TelegramProductivityBot.Services
             _taskService.SetSetting(userId, "antilen", enabled ? "1" : "0");
             string status = enabled ? "включён" : "выключен";
             await _botClient.SendMessage(chatId: userId, text: $"Анти-лень режим {status}. Ожидайте напоминания.");
+        }
+
+        public bool IsAntiLenActive(long userId)
+        {
+            var users = _taskService.GetUsersWithSetting("antilen", "1");
+            return users.Contains(userId);
+        }
+
+        public bool IsHardModeActive(long userId)
+        {
+            var users = _taskService.GetUsersWithSetting("hardmode", "1");
+            return users.Contains(userId);
         }
 
         public async Task SetHardModeAsync(long userId, bool enabled)

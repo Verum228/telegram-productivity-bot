@@ -24,11 +24,13 @@ namespace TelegramProductivityBot
         private readonly LongTaskService _longTaskService;
         private readonly StreakService _streakService;
         private readonly AdviceService _adviceService;
+        private readonly StatisticsService _statisticsService;
 
         // FSM для команды /plan: Хранит состояние заполнения формы для каждого пользователя
         private readonly ConcurrentDictionary<long, PlanFormState> _planStates;
         private readonly ConcurrentDictionary<long, EditPlanState> _editPlanStates;
         private readonly ConcurrentDictionary<long, int> _awaitingLongTaskSlot;
+        private readonly ConcurrentDictionary<long, EditDeadlineState> _editDeadlineStates;
 
         public CommandHandler(
             ITelegramBotClient botClient, 
@@ -40,7 +42,8 @@ namespace TelegramProductivityBot
             ActivityService activityService,
             LongTaskService longTaskService,
             StreakService streakService,
-            AdviceService adviceService)
+            AdviceService adviceService,
+            StatisticsService statisticsService)
         {
             _botClient = botClient;
             _taskService = taskService;
@@ -52,9 +55,11 @@ namespace TelegramProductivityBot
             _longTaskService = longTaskService;
             _streakService = streakService;
             _adviceService = adviceService;
+            _statisticsService = statisticsService;
             _planStates = new ConcurrentDictionary<long, PlanFormState>();
             _editPlanStates = new ConcurrentDictionary<long, EditPlanState>();
             _awaitingLongTaskSlot = new ConcurrentDictionary<long, int>();
+            _editDeadlineStates = new ConcurrentDictionary<long, EditDeadlineState>();
         }
 
         /// <summary>
@@ -81,10 +86,17 @@ namespace TelegramProductivityBot
                 return;
             }
 
-            // Если пользователь находится в процессе редактирования залачи плана на день
+            // Проверяем FSM редактирования плана
             if (_editPlanStates.TryGetValue(chatId, out var editState))
             {
                 await HandleEditPlanStepAsync(chatId, text, editState, cancellationToken);
+                return;
+            }
+
+            // Проверяем FSM редактирования дедлайна
+            if (_editDeadlineStates.TryGetValue(chatId, out var deadlineState))
+            {
+                await HandleEditDeadlineStepAsync(chatId, text, deadlineState, cancellationToken);
                 return;
             }
 
@@ -162,12 +174,23 @@ namespace TelegramProductivityBot
             if (text == "Hard mode ВЫКЛ") { await _antiLazinessService.SetHardModeAsync(chatId, false); return; }
             
             // Кнопки управления планом
-            if (text == "✔ Главная") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 1, true); await HandleTodayCommandAsync(chatId, cancellationToken); return; }
-            if (text == "❌ Главная") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 1, false); await HandleTodayCommandAsync(chatId, cancellationToken); return; }
-            if (text == "✔ Средняя") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 2, true); await HandleTodayCommandAsync(chatId, cancellationToken); return; }
-            if (text == "❌ Средняя") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 2, false); await HandleTodayCommandAsync(chatId, cancellationToken); return; }
-            if (text == "✔ Лёгкая") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 3, true); await HandleTodayCommandAsync(chatId, cancellationToken); return; }
-            if (text == "❌ Лёгкая") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 3, false); await HandleTodayCommandAsync(chatId, cancellationToken); return; }
+            if (text == "✔ Главная") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 1, true); await SendMainMenuAsync(chatId, "Главное меню", cancellationToken); return; }
+            if (text == "❌ Главная") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 1, false); await SendMainMenuAsync(chatId, "Главное меню", cancellationToken); return; }
+            if (text == "✔ Средняя") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 2, true); await SendMainMenuAsync(chatId, "Главное меню", cancellationToken); return; }
+            if (text == "❌ Средняя") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 2, false); await SendMainMenuAsync(chatId, "Главное меню", cancellationToken); return; }
+            if (text == "✔ Лёгкая") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 3, true); await SendMainMenuAsync(chatId, "Главное меню", cancellationToken); return; }
+            if (text == "❌ Лёгкая") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 3, false); await SendMainMenuAsync(chatId, "Главное меню", cancellationToken); return; }
+            if (text == "⏰ Дедлайн главной") { _editDeadlineStates[chatId] = new EditDeadlineState { TaskType = 1 }; await _botClient.SendMessage(chatId, "Введи дедлайн (HH:mm) или выбери:", replyMarkup: GetDeadlineKeyboard(), cancellationToken: cancellationToken); return; }
+            if (text == "⏰ Дедлайн средней") { _editDeadlineStates[chatId] = new EditDeadlineState { TaskType = 2 }; await _botClient.SendMessage(chatId, "Введи дедлайн (HH:mm) или выбери:", replyMarkup: GetDeadlineKeyboard(), cancellationToken: cancellationToken); return; }
+            if (text == "⏰ Дедлайн лёгкой") { _editDeadlineStates[chatId] = new EditDeadlineState { TaskType = 3 }; await _botClient.SendMessage(chatId, "Введи дедлайн (HH:mm) или выбери:", replyMarkup: GetDeadlineKeyboard(), cancellationToken: cancellationToken); return; }
+            if (text == "📊 График")
+            {
+                var data = _statisticsService.GetLast7DaysStats(chatId);
+                using var stream = _statisticsService.GenerateGraphImage(data);
+                var photo = Telegram.Bot.Types.InputFile.FromStream(stream, "graph.png");
+                await _botClient.SendPhotoAsync(chatId, photo, caption: "Твоя продуктивность за последнюю неделю!", cancellationToken: cancellationToken);
+                return;
+            }
             if (text == "🗑 Удалить план")
             {
                 _dayPlanService.DeleteDayPlan(chatId);
@@ -263,8 +286,12 @@ namespace TelegramProductivityBot
                     {
                         await _botClient.SendMessage(
                             chatId: chatId,
-                            text: "Извините, я не понимаю эту команду. Используйте /help для списка команд.",
+                            text: "Используйте кнопки меню.",
                             cancellationToken: cancellationToken);
+                    }
+                    else
+                    {
+                        await SendMainMenuAsync(chatId, "Главное меню", cancellationToken);
                     }
                     break;
             }
@@ -286,9 +313,8 @@ namespace TelegramProductivityBot
         {
             var replyKeyboardMarkup = new ReplyKeyboardMarkup(new[]
             {
-                new KeyboardButton[] { "📅 План дня", "🎯 Фокус" },
-                new KeyboardButton[] { "📋 Мои долгосрочные задачи", "📊 Статистика" },
-                new KeyboardButton[] { "👤 Профиль", "⚙️ Настройки" }
+                new KeyboardButton[] { "📅 План на сегодня", "📝 Создать план" },
+                new KeyboardButton[] { "📊 Статистика", "⚙️ Настройки" }
             })
             {
                 ResizeKeyboard = true
@@ -406,9 +432,10 @@ namespace TelegramProductivityBot
         {
             var replyKeyboardMarkup = new ReplyKeyboardMarkup(new[]
             {
-                new KeyboardButton[] { "📊 Профиль", "📈 Неделя" },
-                new KeyboardButton[] { "📅 Месяц", "🔥 Стрик" },
-                new KeyboardButton[] { "💡 Совет", "⬅ Назад" }
+                new KeyboardButton[] { "📊 Профиль", "📊 График" },
+                new KeyboardButton[] { "📈 Неделя", "📅 Месяц" },
+                new KeyboardButton[] { "🔥 Стрик", "💡 Совет" },
+                new KeyboardButton[] { "⬅ Назад" }
             })
             {
                 ResizeKeyboard = true
@@ -422,17 +449,24 @@ namespace TelegramProductivityBot
         /// </summary>
         private async Task SendSettingsMenuAsync(long chatId, CancellationToken cancellationToken)
         {
+            bool antiLenActive = _antiLazinessService.IsAntiLenActive(chatId);
+            bool hardModeActive = _antiLazinessService.IsHardModeActive(chatId);
+
             var replyKeyboardMarkup = new ReplyKeyboardMarkup(new[]
             {
-                new KeyboardButton[] { "Анти-лень ВКЛ", "Анти-лень ВЫКЛ" },
-                new KeyboardButton[] { "Hard mode ВКЛ", "Hard mode ВЫКЛ" },
+                new KeyboardButton[] { antiLenActive ? "Анти-лень ВЫКЛ" : "Анти-лень ВКЛ" },
+                new KeyboardButton[] { hardModeActive ? "Hard mode ВЫКЛ" : "Hard mode ВКЛ" },
                 new KeyboardButton[] { "⬅ Назад" }
             })
             {
                 ResizeKeyboard = true
             };
 
-            await _botClient.SendMessage(chatId, "Настройки:", replyMarkup: replyKeyboardMarkup, cancellationToken: cancellationToken);
+            string response = $"⚙️ Настройки:\n\n" +
+                              $"Анти-лень: {(antiLenActive ? "ВКЛ" : "ВЫКЛ")}\n" +
+                              $"Hard mode: {(hardModeActive ? "ВКЛ" : "ВЫКЛ")}";
+
+            await _botClient.SendMessage(chatId, response, replyMarkup: replyKeyboardMarkup, cancellationToken: cancellationToken);
         }
 
         /// <summary>
@@ -582,7 +616,8 @@ namespace TelegramProductivityBot
             var plan = _dayPlanService.GetTodayPlan(chatId);
             if (plan == null)
             {
-                await _botClient.SendMessage(chatId, "На сегодня план ещё не составлен. Составьте его через меню.", cancellationToken: cancellationToken);
+                var emptyMarkup = new ReplyKeyboardMarkup(new[] { new KeyboardButton[] { "📝 Создать план" }, new KeyboardButton[] { "⬅ Назад" } }) { ResizeKeyboard = true };
+                await _botClient.SendMessage(chatId, "У тебя ещё нет плана на сегодня", replyMarkup: emptyMarkup, cancellationToken: cancellationToken);
                 return;
             }
 
@@ -590,16 +625,19 @@ namespace TelegramProductivityBot
             string mediumStatus = plan.MediumDone ? "✔" : plan.MediumFailed ? "❌" : "⏳";
             string easyStatus = plan.EasyDone ? "✔" : plan.EasyFailed ? "❌" : "⏳";
 
-            string response = $"Текущий план дня:\n\n" +
-                              $"🔥 Главная задача ({mainStatus}):\n{plan.MainTask}\n\n" +
-                              $"⚙️ Средняя задача ({mediumStatus}):\n{plan.MediumTask}\n\n" +
-                              $"🟢 Лёгкая задача ({easyStatus}):\n{plan.EasyTask}";
+            string mainDeadlineStr = plan.MainDeadline != null ? $"До {plan.MainDeadline}" : "Без дедлайна";
+            string medDeadlineStr = plan.MediumDeadline != null ? $"До {plan.MediumDeadline}" : "Без дедлайна";
+            string easyDeadlineStr = plan.EasyDeadline != null ? $"До {plan.EasyDeadline}" : "Без дедлайна";
+
+            string response = $"🔥 Главная задача\n{plan.MainTask}\n⏰ {mainDeadlineStr}\n{mainStatus}\n\n" +
+                              $"⚙️ Средняя задача\n{plan.MediumTask}\n⏰ {medDeadlineStr}\n{mediumStatus}\n\n" +
+                              $"🟢 Лёгкая задача\n{plan.EasyTask}\n⏰ {easyDeadlineStr}\n{easyStatus}";
 
             var replyKeyboardMarkup = new ReplyKeyboardMarkup(new[]
             {
-                new KeyboardButton[] { "✔ Главная", "❌ Главная" },
-                new KeyboardButton[] { "✔ Средняя", "❌ Средняя" },
-                new KeyboardButton[] { "✔ Лёгкая", "❌ Лёгкая" },
+                new KeyboardButton[] { "✔ Главная", "❌ Главная", "⏰ Дедлайн главной" },
+                new KeyboardButton[] { "✔ Средняя", "❌ Средняя", "⏰ Дедлайн средней" },
+                new KeyboardButton[] { "✔ Лёгкая", "❌ Лёгкая", "⏰ Дедлайн лёгкой" },
                 new KeyboardButton[] { "✏ Изменить задачу", "🗑 Удалить план" },
                 new KeyboardButton[] { "⬅ Назад" }
             })
@@ -620,17 +658,38 @@ namespace TelegramProductivityBot
                 case 1:
                     state.DraftPlan.MainTask = text;
                     state.Step = 2;
-                    await _botClient.SendMessage(chatId, "Средняя задача дня", cancellationToken: cancellationToken);
+                    await _botClient.SendMessage(chatId, "Дедлайн для главной задачи (введите HH:mm или нажмите кнопку):", replyMarkup: GetDeadlineKeyboard(), cancellationToken: cancellationToken);
                     break;
 
                 case 2:
-                    state.DraftPlan.MediumTask = text;
+                    if (!TryParseDeadline(text, out string? mainDl, out string err1)) { await _botClient.SendMessage(chatId, err1, cancellationToken: cancellationToken); return; }
+                    state.DraftPlan.MainDeadline = mainDl;
                     state.Step = 3;
-                    await _botClient.SendMessage(chatId, "Лёгкая задача дня", cancellationToken: cancellationToken);
+                    await _botClient.SendMessage(chatId, "Средняя задача дня", replyMarkup: new ReplyKeyboardRemove(), cancellationToken: cancellationToken);
                     break;
 
                 case 3:
+                    state.DraftPlan.MediumTask = text;
+                    state.Step = 4;
+                    await _botClient.SendMessage(chatId, "Дедлайн для средней задачи:", replyMarkup: GetDeadlineKeyboard(), cancellationToken: cancellationToken);
+                    break;
+
+                case 4:
+                    if (!TryParseDeadline(text, out string? medDl, out string err2)) { await _botClient.SendMessage(chatId, err2, cancellationToken: cancellationToken); return; }
+                    state.DraftPlan.MediumDeadline = medDl;
+                    state.Step = 5;
+                    await _botClient.SendMessage(chatId, "Лёгкая задача дня", replyMarkup: new ReplyKeyboardRemove(), cancellationToken: cancellationToken);
+                    break;
+
+                case 5:
                     state.DraftPlan.EasyTask = text;
+                    state.Step = 6;
+                    await _botClient.SendMessage(chatId, "Дедлайн для лёгкой задачи:", replyMarkup: GetDeadlineKeyboard(), cancellationToken: cancellationToken);
+                    break;
+
+                case 6:
+                    if (!TryParseDeadline(text, out string? easyDl, out string err3)) { await _botClient.SendMessage(chatId, err3, cancellationToken: cancellationToken); return; }
+                    state.DraftPlan.EasyDeadline = easyDl;
                     state.DraftPlan.UserId = chatId;
                     
                     // Сохраняем в БД
@@ -639,7 +698,8 @@ namespace TelegramProductivityBot
                     // Завершаем форму
                     _planStates.TryRemove(chatId, out _);
 
-                    await _botClient.SendMessage(chatId, "План на сегодня сохранён.", cancellationToken: cancellationToken);
+                    await _botClient.SendMessage(chatId, "План на сегодня сохранён.", replyMarkup: new ReplyKeyboardRemove(), cancellationToken: cancellationToken);
+                    await HandleTodayCommandAsync(chatId, cancellationToken);
                     break;
             }
         }
@@ -689,6 +749,53 @@ namespace TelegramProductivityBot
                 await HandleTodayCommandAsync(chatId, cancellationToken);
             }
         }
+
+        private async Task HandleEditDeadlineStepAsync(long chatId, string text, EditDeadlineState state, CancellationToken cancellationToken)
+        {
+            if (text == "Отмена" || text == "0")
+            {
+                _editDeadlineStates.TryRemove(chatId, out _);
+                await HandleTodayCommandAsync(chatId, cancellationToken);
+                return;
+            }
+
+            if (!TryParseDeadline(text, out string? dl, out string err))
+            {
+                await _botClient.SendMessage(chatId, err, cancellationToken: cancellationToken);
+                return;
+            }
+
+            _taskService.SetTaskDeadline(chatId, state.TaskType, dl);
+            _editDeadlineStates.TryRemove(chatId, out _);
+            
+            await _botClient.SendMessage(chatId, $"Дедлайн сохранён: {(dl ?? "Без дедлайна")}", replyMarkup: new ReplyKeyboardRemove(), cancellationToken: cancellationToken);
+            await HandleTodayCommandAsync(chatId, cancellationToken);
+        }
+
+        private ReplyKeyboardMarkup GetDeadlineKeyboard()
+        {
+            return new ReplyKeyboardMarkup(new[]
+            {
+                new KeyboardButton[] { "Без дедлайна" }
+            }) { ResizeKeyboard = true, OneTimeKeyboard = true };
+        }
+
+        private bool TryParseDeadline(string text, out string? formattedTime, out string errorMessage)
+        {
+            formattedTime = null;
+            errorMessage = "";
+            
+            if (text == "Без дедлайна") return true;
+
+            if (TimeSpan.TryParse(text, out TimeSpan ts))
+            {
+                formattedTime = ts.ToString(@"hh\:mm");
+                return true;
+            }
+            
+            errorMessage = "Пожалуйста, введите время в правильном формате (например, 18:30) или нажмите 'Без дедлайна'.";
+            return false;
+        }
     }
 
     /// <summary>
@@ -704,5 +811,10 @@ namespace TelegramProductivityBot
     {
         public int Step { get; set; } = 1;
         public int TaskTypeToEdit { get; set; }
+    }
+
+    class EditDeadlineState
+    {
+        public int TaskType { get; set; }
     }
 }
