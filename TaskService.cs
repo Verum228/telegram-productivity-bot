@@ -284,18 +284,18 @@ namespace TelegramProductivityBot
             return count;
         }
 
-        public List<DayPlan> GetPast7DaysPlans(long userId)
+        public List<DayPlan> GetPastDaysPlans(long userId, int days)
         {
             var plans = new List<DayPlan>();
             using var connection = new SqliteConnection(_connectionString);
             connection.Open();
 
             var command = connection.CreateCommand();
-            command.CommandText = @"
+            command.CommandText = $@"
                 SELECT Id, UserId, MainTask, MainDone, MediumTask, MediumDone, EasyTask, EasyDone, CreatedDate, IsPlanCompleted,
                        MainDeadline, MediumDeadline, EasyDeadline
                 FROM day_plans
-                WHERE UserId = $userId AND CreatedDate >= date('now', '-7 days')
+                WHERE UserId = $userId AND CreatedDate >= date('now', '-{days} days')
                 ORDER BY CreatedDate ASC";
             command.Parameters.AddWithValue("$userId", userId);
 
@@ -312,7 +312,7 @@ namespace TelegramProductivityBot
                     MediumDone = reader.GetInt32(5) == 1,
                     EasyTask = reader.IsDBNull(6) ? "" : reader.GetString(6),
                     EasyDone = reader.GetInt32(7) == 1,
-                    CreatedDate = DateTime.Parse(reader.GetString(8)), // Changed from Date to CreatedDate
+                    CreatedDate = DateTime.Parse(reader.GetString(8)), 
                     IsPlanCompleted = !reader.IsDBNull(9) && reader.GetInt32(9) == 1,
                     MainDeadline = reader.IsDBNull(10) ? null : reader.GetString(10),
                     MediumDeadline = reader.IsDBNull(11) ? null : reader.GetString(11),
@@ -322,6 +322,8 @@ namespace TelegramProductivityBot
 
             return plans;
         }
+
+        public List<DayPlan> GetPast7DaysPlans(long userId) => GetPastDaysPlans(userId, 7);
 
         public int GetFocusSessionsCompletedToday(long userId)
         {

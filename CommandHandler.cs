@@ -168,10 +168,10 @@ namespace TelegramProductivityBot
             if (text == "🗑 Удалить задачу") { await _botClient.SendMessage(chatId, "Для удаления отправьте:\n/delete [номер задачи] (в разработке)", cancellationToken: cancellationToken); return; }
             if (text == "🔔 Анти-лень" || text == "💀 Hard mode" || text == "🔕 Выключить напоминания") { await _botClient.SendMessage(chatId, $"Настройка. Для включения используйте команды /antilen on/off или /hardmode on/off", cancellationToken: cancellationToken); return; }
             
-            if (text == "Анти-лень ВКЛ") { await _antiLazinessService.SetAntiLenAsync(chatId, true); return; }
-            if (text == "Анти-лень ВЫКЛ") { await _antiLazinessService.SetAntiLenAsync(chatId, false); return; }
-            if (text == "Hard mode ВКЛ") { await _antiLazinessService.SetHardModeAsync(chatId, true); return; }
-            if (text == "Hard mode ВЫКЛ") { await _antiLazinessService.SetHardModeAsync(chatId, false); return; }
+            if (text == "Анти-лень ВКЛ") { await _antiLazinessService.SetAntiLenAsync(chatId, true); await SendSettingsMenuAsync(chatId, cancellationToken); return; }
+            if (text == "Анти-лень ВЫКЛ") { await _antiLazinessService.SetAntiLenAsync(chatId, false); await SendSettingsMenuAsync(chatId, cancellationToken); return; }
+            if (text == "Hard mode ВКЛ") { await _antiLazinessService.SetHardModeAsync(chatId, true); await SendSettingsMenuAsync(chatId, cancellationToken); return; }
+            if (text == "Hard mode ВЫКЛ") { await _antiLazinessService.SetHardModeAsync(chatId, false); await SendSettingsMenuAsync(chatId, cancellationToken); return; }
             
             // Кнопки управления планом
             if (text == "✔ Главная") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 1, true); await SendMainMenuAsync(chatId, "Главное меню", cancellationToken); return; }
@@ -183,12 +183,19 @@ namespace TelegramProductivityBot
             if (text == "⏰ Дедлайн главной") { _editDeadlineStates[chatId] = new EditDeadlineState { TaskType = 1 }; await _botClient.SendMessage(chatId, "Введи дедлайн (HH:mm) или выбери:", replyMarkup: GetDeadlineKeyboard(), cancellationToken: cancellationToken); return; }
             if (text == "⏰ Дедлайн средней") { _editDeadlineStates[chatId] = new EditDeadlineState { TaskType = 2 }; await _botClient.SendMessage(chatId, "Введи дедлайн (HH:mm) или выбери:", replyMarkup: GetDeadlineKeyboard(), cancellationToken: cancellationToken); return; }
             if (text == "⏰ Дедлайн лёгкой") { _editDeadlineStates[chatId] = new EditDeadlineState { TaskType = 3 }; await _botClient.SendMessage(chatId, "Введи дедлайн (HH:mm) или выбери:", replyMarkup: GetDeadlineKeyboard(), cancellationToken: cancellationToken); return; }
-            if (text == "📊 График")
+            if (text == "📊 График" || text.Trim() == "📊 График" || text.Contains("График"))
             {
-                var data = _statisticsService.GetLast7DaysStats(chatId);
-                using var stream = _statisticsService.GenerateGraphImage(data);
-                var photo = Telegram.Bot.Types.InputFile.FromStream(stream, "graph.png");
-                await _botClient.SendPhotoAsync(chatId, photo, caption: "Твоя продуктивность за последнюю неделю!", cancellationToken: cancellationToken);
+                try 
+                {
+                    var data = _statisticsService.GetLast7DaysStats(chatId);
+                    using var stream = _statisticsService.GenerateGraphImage(data);
+                    var photo = Telegram.Bot.Types.InputFile.FromStream(stream, "graph.png");
+                    await _botClient.SendPhotoAsync(chatId, photo, caption: "Твоя продуктивность за последнюю неделю!", cancellationToken: cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    await _botClient.SendMessage(chatId, $"Ошибка генерации графика: {ex.Message}", cancellationToken: cancellationToken);
+                }
                 return;
             }
             if (text == "🗑 Удалить план")
