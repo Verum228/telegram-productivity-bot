@@ -210,7 +210,7 @@ namespace TelegramProductivityBot
             if (text != null && text.Contains(LocalizationService.T("btn_main_deadline", lang))) { _editDeadlineStates[chatId] = new EditDeadlineState { TaskType = 1 }; await _botClient.SendMessage(chatId, LocalizationService.T("plan_prompt_main_dl", lang), replyMarkup: GetDeadlineKeyboard(lang), cancellationToken: cancellationToken); return; }
             if (text != null && text.Contains(LocalizationService.T("btn_med_deadline", lang))) { _editDeadlineStates[chatId] = new EditDeadlineState { TaskType = 2 }; await _botClient.SendMessage(chatId, LocalizationService.T("plan_prompt_main_dl", lang), replyMarkup: GetDeadlineKeyboard(lang), cancellationToken: cancellationToken); return; }
             if (text != null && text.Contains(LocalizationService.T("btn_easy_deadline", lang))) { _editDeadlineStates[chatId] = new EditDeadlineState { TaskType = 3 }; await _botClient.SendMessage(chatId, LocalizationService.T("plan_prompt_main_dl", lang), replyMarkup: GetDeadlineKeyboard(lang), cancellationToken: cancellationToken); return; }
-            if (text == "📊 График" || (text != null && text.Trim() == "📊 График") || (text != null && text.Contains("График")))
+            if (text != null && text.Contains(LocalizationService.T("stats_graph", lang)))
             {
                 try 
                 {
@@ -246,16 +246,16 @@ namespace TelegramProductivityBot
             else if (text == "⏱ Начать фокус (50)") text = "/focus 50";
             else if (text == "⏹ Остановить фокус") text = "/stopfocus";
             else if (text == "📊 Статус фокуса") text = "/status";
-            else if (text == LocalizationService.T("menu_create", lang) || text.Contains(LocalizationService.T("menu_create", lang))) text = "/plan";
-            else if (text == LocalizationService.T("menu_plan", lang) || text.Contains(LocalizationService.T("menu_plan", lang))) text = "/today";
-            else if (text == LocalizationService.T("menu_stats", lang) || text.Contains(LocalizationService.T("menu_stats", lang))) text = "/stats_menu_trigger";
-            else if (text == LocalizationService.T("menu_settings", lang) || text.Contains(LocalizationService.T("menu_settings", lang))) text = "/settings_menu_trigger";
+            else if (text == LocalizationService.T("menu_create", lang) || (text != null && text.Contains(LocalizationService.T("menu_create", lang)))) text = "/plan";
+            else if (text == LocalizationService.T("menu_plan", lang) || (text != null && text.Contains(LocalizationService.T("menu_plan", lang)))) text = "/today";
+            else if (text == LocalizationService.T("menu_stats", lang) || (text != null && text.Contains(LocalizationService.T("menu_stats", lang)))) text = "/stats_menu_trigger";
+            else if (text == LocalizationService.T("menu_settings", lang) || (text != null && text.Contains(LocalizationService.T("menu_settings", lang)))) text = "/settings_menu_trigger";
             else if (text == "📊 Отчёт дня") text = "/report";
-            else if (text == "👤 Профиль" || text == "📊 Профиль") text = "/profile";
-            else if (text == "📈 Неделя") text = "/week";
-            else if (text == "🔥 Стрик") text = "/streak";
-            else if (text == "📅 Месяц") text = "/month";
-            else if (text == "💡 Совет") text = "/advice";
+            else if (text != null && text.Contains(LocalizationService.T("stats_profile", lang))) text = "/profile";
+            else if (text != null && text.Contains(LocalizationService.T("stats_week", lang))) text = "/week";
+            else if (text != null && text.Contains(LocalizationService.T("stats_streak", lang))) text = "/streak";
+            else if (text != null && text.Contains(LocalizationService.T("stats_month", lang))) text = "/month";
+            else if (text != null && text.Contains(LocalizationService.T("stats_advice", lang))) text = "/advice";
 
             // Выбор команды
             var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
