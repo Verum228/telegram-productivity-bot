@@ -199,6 +199,10 @@ namespace TelegramProductivityBot.Services
                 { "ru", "🔥 Streak: {streak} дней\nЛучший результат: {best} дней" },
                 { "en", "🔥 Streak: {streak} days\nBest result: {best} days" }
             }},
+            { "main_menu", new Dictionary<string, string> {
+                { "ru", "Главное меню" },
+                { "en", "Main menu" }
+            }},
             { "unknown_command", new Dictionary<string, string> {
                 { "ru", "Используйте кнопки меню." },
                 { "en", "Please use the menu buttons." }
