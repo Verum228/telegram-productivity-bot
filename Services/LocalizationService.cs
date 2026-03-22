@@ -1,0 +1,224 @@
+using System.Collections.Generic;
+
+namespace TelegramProductivityBot.Services
+{
+    public static class LocalizationService
+    {
+        private static readonly Dictionary<string, Dictionary<string, string>> _texts = new Dictionary<string, Dictionary<string, string>>
+        {
+            { "start", new Dictionary<string, string> {
+                { "ru", "Привет. Я бот продуктивности.\nЯ помогу тебе не лениться." },
+                { "en", "Hi! I'm a productivity bot.\nI will help you stop being lazy." }
+            }},
+            { "menu_plan", new Dictionary<string, string> {
+                { "ru", "📅 План на сегодня" },
+                { "en", "📅 Today's Plan" }
+            }},
+            { "menu_create", new Dictionary<string, string> {
+                { "ru", "📝 Создать план" },
+                { "en", "📝 Create Plan" }
+            }},
+            { "menu_stats", new Dictionary<string, string> {
+                { "ru", "📊 Статистика" },
+                { "en", "📊 Statistics" }
+            }},
+            { "menu_settings", new Dictionary<string, string> {
+                { "ru", "⚙️ Настройки" },
+                { "en", "⚙️ Settings" }
+            }},
+            { "today_title", new Dictionary<string, string> {
+                { "ru", "📅 План на сегодня" },
+                { "en", "📅 Today plan" }
+            }},
+            { "task_main", new Dictionary<string, string> {
+                { "ru", "Главная" },
+                { "en", "Main" }
+            }},
+            { "task_medium", new Dictionary<string, string> {
+                { "ru", "Средняя" },
+                { "en", "Medium" }
+            }},
+            { "task_easy", new Dictionary<string, string> {
+                { "ru", "Лёгкая" },
+                { "en", "Easy" }
+            }},
+            { "progress", new Dictionary<string, string> {
+                { "ru", "Прогресс: {done} / 3" },
+                { "en", "Progress: {done} / 3" }
+            }},
+            { "task_done", new Dictionary<string, string> {
+                { "ru", "✔ {task} выполнена\n+{xp} XP\nПрогресс: {done} / 3" },
+                { "en", "✔ {task} done\n+{xp} XP\nProgress: {done} / 3" }
+            }},
+            { "task_failed", new Dictionary<string, string> {
+                { "ru", "❌ {task} провалена\n{xp} XP\nПрогресс: {done} / 3" },
+                { "en", "❌ {task} failed\n{xp} XP\nProgress: {done} / 3" }
+            }},
+            { "deadline_30", new Dictionary<string, string> {
+                { "ru", "⏰ Через 30 минут дедлайн: {task}\nОсталось мало времени!" },
+                { "en", "⏰ Deadline in 30 minutes: {task}\nTime is running out!" }
+            }},
+            { "deadline_10", new Dictionary<string, string> {
+                { "ru", "🚨 КРИТИЧЕСКИЙ ДЕДЛАЙН: {task}\nОсталось 10 минут!" },
+                { "en", "🚨 CRITICAL DEADLINE: {task}\n10 minutes left!" }
+            }},
+            { "deadline_missed", new Dictionary<string, string> {
+                { "ru", "❌ Дедлайн пропущен: {task}\n-5 XP" },
+                { "en", "❌ Deadline missed: {task}\n-5 XP" }
+            }},
+            { "no_plan", new Dictionary<string, string> {
+                { "ru", "У тебя ещё нет плана на сегодня" },
+                { "en", "You don't have a plan for today yet" }
+            }},
+            { "settings_antilen_on", new Dictionary<string, string> {
+                { "ru", "Анти-лень ВКЛ" },
+                { "en", "Anti-laziness ON" }
+            }},
+            { "settings_antilen_off", new Dictionary<string, string> {
+                { "ru", "Анти-лень ВЫКЛ" },
+                { "en", "Anti-laziness OFF" }
+            }},
+            { "settings_hardmode_on", new Dictionary<string, string> {
+                { "ru", "Hard mode ВКЛ" },
+                { "en", "Hard mode ON" }
+            }},
+            { "settings_hardmode_off", new Dictionary<string, string> {
+                { "ru", "Hard mode ВЫКЛ" },
+                { "en", "Hard mode OFF" }
+            }},
+            { "settings_language", new Dictionary<string, string> {
+                { "ru", "🌍 Язык" },
+                { "en", "🌍 Language" }
+            }},
+            { "settings_overview", new Dictionary<string, string> {
+                { "ru", "⚙️ Настройки:\n\nАнти-лень: {antilen}\nHard mode: {hardmode}" },
+                { "en", "⚙️ Settings:\n\nAnti-laziness: {antilen}\nHard mode: {hardmode}" }
+            }},
+            { "state_on", new Dictionary<string, string> { { "ru", "ВКЛ" }, { "en", "ON" } }},
+            { "state_off", new Dictionary<string, string> { { "ru", "ВЫКЛ" }, { "en", "OFF" } }},
+            { "deadline_until", new Dictionary<string, string> {
+                { "ru", "До {time}" },
+                { "en", "Until {time}" }
+            }},
+            { "deadline_none", new Dictionary<string, string> {
+                { "ru", "Без дедлайна" },
+                { "en", "No deadline" }
+            }},
+            { "btn_main_done", new Dictionary<string, string> { { "ru", "✔ Главная" }, { "en", "✔ Main" } }},
+            { "btn_main_fail", new Dictionary<string, string> { { "ru", "❌ Главная" }, { "en", "❌ Main" } }},
+            { "btn_main_deadline", new Dictionary<string, string> { { "ru", "⏰ Дедлайн главной" }, { "en", "⏰ Main deadline" } }},
+            { "btn_med_done", new Dictionary<string, string> { { "ru", "✔ Средняя" }, { "en", "✔ Medium" } }},
+            { "btn_med_fail", new Dictionary<string, string> { { "ru", "❌ Средняя" }, { "en", "❌ Medium" } }},
+            { "btn_med_deadline", new Dictionary<string, string> { { "ru", "⏰ Дедлайн средней" }, { "en", "⏰ Medium deadline" } }},
+            { "btn_easy_done", new Dictionary<string, string> { { "ru", "✔ Лёгкая" }, { "en", "✔ Easy" } }},
+            { "btn_easy_fail", new Dictionary<string, string> { { "ru", "❌ Лёгкая" }, { "en", "❌ Easy" } }},
+            { "btn_easy_deadline", new Dictionary<string, string> { { "ru", "⏰ Дедлайн лёгкой" }, { "en", "⏰ Easy deadline" } }},
+            { "btn_edit_task", new Dictionary<string, string> { { "ru", "✏ Изменить задачу" }, { "en", "✏ Edit task" } }},
+            { "btn_delete_plan", new Dictionary<string, string> { { "ru", "🗑 Удалить план" }, { "en", "🗑 Delete plan" } }},
+            { "btn_back", new Dictionary<string, string> { { "ru", "⬅ Назад" }, { "en", "⬅ Back" } }},
+            { "plan_completed_locked", new Dictionary<string, string> { { "ru", "План дня завершён 🔥 Изменения больше не принимаются." }, { "en", "Day plan completed 🔥 No more changes allowed." } }},
+            { "status_already_set", new Dictionary<string, string> { { "ru", "Статус уже установлен" }, { "en", "Status is already set" } }},
+            { "plan_completed", new Dictionary<string, string> { { "ru", "План дня завершён 🔥" }, { "en", "Day plan completed 🔥" } }},
+            { "streak_increased", new Dictionary<string, string> { { "ru", "🔥 Твой стрик теперь составляет {streak} дней!" }, { "en", "🔥 Your streak is now {streak} days!" } }},
+            { "lang_select", new Dictionary<string, string> { { "ru", "Выбери язык / Choose language" }, { "en", "Choose language / Выбери язык" } }},
+            { "lang_set_ru", new Dictionary<string, string> { { "ru", "Язык установлен на Русский" }, { "en", "Language changed to Russian" } }},
+            { "lang_set_en", new Dictionary<string, string> { { "ru", "Language set to English" }, { "en", "Language changed to English" } }},
+            { "plan_already_exists", new Dictionary<string, string> {
+                { "ru", "У тебя уже есть план на сегодня. Используй меню «План на сегодня» для изменения или удаления." },
+                { "en", "You already have a plan for today. Use the 'Today plan' menu to edit or delete." }
+            }},
+            { "plan_prompt_main", new Dictionary<string, string> {
+                { "ru", "Главная задача дня (самая важная)" },
+                { "en", "Main task of the day (most important)" }
+            }},
+            { "plan_prompt_main_dl", new Dictionary<string, string> {
+                { "ru", "Дедлайн для главной задачи (введите HH:mm или нажмите кнопку):" },
+                { "en", "Deadline for the main task (enter HH:mm or press the button):" }
+            }},
+            { "plan_prompt_medium", new Dictionary<string, string> {
+                { "ru", "Средняя задача дня" },
+                { "en", "Medium task of the day" }
+            }},
+            { "plan_prompt_medium_dl", new Dictionary<string, string> {
+                { "ru", "Дедлайн для средней задачи:" },
+                { "en", "Deadline for the medium task:" }
+            }},
+            { "plan_prompt_easy", new Dictionary<string, string> {
+                { "ru", "Лёгкая задача дня" },
+                { "en", "Easy task of the day" }
+            }},
+            { "plan_prompt_easy_dl", new Dictionary<string, string> {
+                { "ru", "Дедлайн для лёгкой задачи:" },
+                { "en", "Deadline for the easy task:" }
+            }},
+            { "plan_saved", new Dictionary<string, string> {
+                { "ru", "План на сегодня сохранён." },
+                { "en", "Today's plan is saved." }
+            }},
+            { "plan_deleted", new Dictionary<string, string> {
+                { "ru", "План на сегодня удалён." },
+                { "en", "Today's plan deleted." }
+            }},
+            { "edit_task_prompt", new Dictionary<string, string> {
+                { "ru", "Какую задачу изменить?\n1 Главную\n2 Среднюю\n3 Лёгкую" },
+                { "en", "Which task to edit?\n1 Main\n2 Medium\n3 Easy" }
+            }},
+            { "edit_task_enter_text", new Dictionary<string, string> {
+                { "ru", "Введи новый текст для {task} задачи:" },
+                { "en", "Enter new text for the {task} task:" }
+            }},
+            { "edit_task_invalid", new Dictionary<string, string> {
+                { "ru", "Пожалуйста, выбери номер задачи (1, 2 или 3). Если хочешь выйти из редактирования, напиши 0." },
+                { "en", "Please select a task number (1, 2, or 3). If you want to cancel, type 0." }
+            }},
+            { "deadline_saved", new Dictionary<string, string> {
+                { "ru", "Дедлайн сохранён: {time}" },
+                { "en", "Deadline saved: {time}" }
+            }},
+            { "deadline_invalid", new Dictionary<string, string> {
+                { "ru", "Пожалуйста, введите время в правильном формате (например, 18:30) или нажмите 'Без дедлайна'." },
+                { "en", "Please enter time in the correct format (e.g. 18:30) or press 'No deadline'." }
+            }},
+            { "config_usage_antilen", new Dictionary<string, string> {
+                { "ru", "Использование: /antilen on или /antilen off" },
+                { "en", "Usage: /antilen on or /antilen off" }
+            }},
+            { "config_usage_hardmode", new Dictionary<string, string> {
+                { "ru", "Использование: /hardmode on или /hardmode off" },
+                { "en", "Usage: /hardmode on or /hardmode off" }
+            }},
+            { "level_info", new Dictionary<string, string> {
+                { "ru", "Твой уровень: {level}\nXP: {xp} / {nextLevelXp}" },
+                { "en", "Your level: {level}\nXP: {xp} / {nextLevelXp}" }
+            }},
+            { "profile_info", new Dictionary<string, string> {
+                { "ru", "Статистика:\n\nУровень: {level}\nXP: {xp}\nВыполнено задач: {tasksCompleted}\nФокус-сессий: {focusSessions}" },
+                { "en", "Statistics:\n\nLevel: {level}\nXP: {xp}\nTasks completed: {tasksCompleted}\nFocus sessions: {focusSessions}" }
+            }},
+            { "streak_info", new Dictionary<string, string> {
+                { "ru", "🔥 Streak: {streak} дней\nЛучший результат: {best} дней" },
+                { "en", "🔥 Streak: {streak} days\nBest result: {best} days" }
+            }},
+            { "unknown_command", new Dictionary<string, string> {
+                { "ru", "Используйте кнопки меню." },
+                { "en", "Please use the menu buttons." }
+            }}
+        };
+
+        public static string T(string key, string lang)
+        {
+            if (string.IsNullOrEmpty(lang)) lang = "ru";
+
+            if (_texts != null && _texts.TryGetValue(key, out var translations))
+            {
+                if (translations.TryGetValue(lang, out var text))
+                    return text;
+                
+                if (translations.TryGetValue("ru", out var defaultText))
+                    return defaultText;
+            }
+            
+            return key; // Fallback to key itself if all fails to prevent crashes
+        }
+    }
+}

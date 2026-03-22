@@ -54,9 +54,10 @@ namespace TelegramProductivityBot.Services
         public async Task ProcessDayPlanTaskAsync(Models.DayPlan plan, int taskType, bool markAsDone)
         {
             long userId = plan.UserId;
+            string lang = _taskService.GetUserLanguage(userId) ?? "ru";
 
             if (plan.IsPlanCompleted) {
-                await _botClient.SendMessage(chatId: userId, text: "План дня завершён 🔥 Изменения больше не принимаются.");
+                await _botClient.SendMessage(chatId: userId, text: LocalizationService.T("plan_completed_locked", lang));
                 return;
             }
 
@@ -69,11 +70,11 @@ namespace TelegramProductivityBot.Services
             }
             
             if (markAsDone && currentDone) {
-                await _botClient.SendMessage(chatId: userId, text: "Статус уже установлен");
+                await _botClient.SendMessage(chatId: userId, text: LocalizationService.T("status_already_set", lang));
                 return;
             }
             if (!markAsDone && currentFailed) {
-                await _botClient.SendMessage(chatId: userId, text: "Статус уже установлен");
+                await _botClient.SendMessage(chatId: userId, text: LocalizationService.T("status_already_set", lang));
                 return;
             }
             
@@ -97,32 +98,33 @@ namespace TelegramProductivityBot.Services
 
             int doneCount = (plan.MainDone ? 1 : 0) + (plan.MediumDone ? 1 : 0) + (plan.EasyDone ? 1 : 0);
             
-            string xpPrefix = xpChange > 0 ? "+" : "";
-            string icon = markAsDone ? "✔" : "❌";
-            string actionWord = markAsDone ? "выполнена" : "провалена";
+            string key = markAsDone ? "task_done" : "task_failed";
+            
+            string message = LocalizationService.T(key, lang)
+                .Replace("{task}", GetTaskTypeName(taskType, lang))
+                .Replace("{done}", doneCount.ToString())
+                .Replace("{xp}", markAsDone ? xpChange.ToString() : xpChange.ToString());
 
-            await _botClient.SendMessage(
-                chatId: userId, 
-                text: $"{icon} {GetTaskTypeName(taskType)} {actionWord}\n{xpPrefix}{xpChange} XP\n\nПрогресс: {doneCount} / 3");
+            await _botClient.SendMessage(chatId: userId, text: message);
 
             if (plan.MainDone && plan.MediumDone && plan.EasyDone && !plan.IsPlanCompleted) {
                 _taskService.SetPlanCompleted(userId);
                 bool streakIncreased = _streakService.RecordDaySuccess(userId);
-                await _botClient.SendMessage(chatId: userId, text: "План дня завершён 🔥");
+                await _botClient.SendMessage(chatId: userId, text: LocalizationService.T("plan_completed", lang));
                 if (streakIncreased) {
                     var streak = _streakService.GetStreak(userId);
                     await _botClient.SendMessage(
                         chatId: userId,
-                        text: $"🔥 Твой стрик теперь составляет {streak.CurrentStreak} дней!");
+                        text: LocalizationService.T("streak_increased", lang).Replace("{streak}", streak.CurrentStreak.ToString()));
                 }
             }
         }
 
-        private string GetTaskTypeName(int type) => type switch {
-            1 => "Главная",
-            2 => "Средняя",
-            3 => "Лёгкая",
-            _ => "Задача"
+        private string GetTaskTypeName(int type, string lang) => type switch {
+            1 => LocalizationService.T("task_main", lang),
+            2 => LocalizationService.T("task_medium", lang),
+            3 => LocalizationService.T("task_easy", lang),
+            _ => "Task"
         };
 
 

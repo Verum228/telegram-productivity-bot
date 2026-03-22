@@ -64,10 +64,11 @@ namespace TelegramProductivityBot.Services
         {
             if (string.IsNullOrEmpty(deadlineStr) || isDone || isFailed) return;
 
+            var lang = _taskService.GetUserLanguage(plan.UserId) ?? "ru";
             string taskText = taskType switch {
-                1 => plan.MainTask ?? "Главная",
-                2 => plan.MediumTask ?? "Средняя",
-                _ => plan.EasyTask ?? "Лёгкая"
+                1 => plan.MainTask ?? LocalizationService.T("task_main", lang),
+                2 => plan.MediumTask ?? LocalizationService.T("task_medium", lang),
+                _ => plan.EasyTask ?? LocalizationService.T("task_easy", lang)
             };
 
             if (!TimeSpan.TryParse(deadlineStr, out TimeSpan deadlineTimeSpan)) return;
@@ -85,14 +86,14 @@ namespace TelegramProductivityBot.Services
             {
                 await _dayPlanService.ProcessDayPlanTaskAsync(plan, taskType, false);
                 _taskService.SetTaskOverdueNotified(plan.UserId, taskType);
-                await _botClient.SendMessage(chatId: plan.UserId, text: $"❌ Дедлайн пропущен: {taskText}\n-5 XP");
+                await _botClient.SendMessage(chatId: plan.UserId, text: LocalizationService.T("deadline_missed", lang).Replace("{task}", taskText));
                 return;
             }
 
             // 2. 10 MINUTES REMINDER
             if (diff.TotalMinutes <= 10 && diff.TotalMinutes > 0 && reminderStatus < 2)
             {
-                await _botClient.SendMessage(chatId: plan.UserId, text: $"⚠️ 10 минут до дедлайна: {taskText}");
+                await _botClient.SendMessage(chatId: plan.UserId, text: LocalizationService.T("deadline_10", lang).Replace("{task}", taskText));
                 _taskService.SetTaskReminderStatus(plan.UserId, taskType, 2);
                 return;
             }
@@ -100,7 +101,7 @@ namespace TelegramProductivityBot.Services
             // 3. 30 MINUTES REMINDER
             if (diff.TotalMinutes <= 30 && diff.TotalMinutes > 0 && reminderStatus < 1)
             {
-                await _botClient.SendMessage(chatId: plan.UserId, text: $"⏰ Через 30 минут дедлайн: {taskText}");
+                await _botClient.SendMessage(chatId: plan.UserId, text: LocalizationService.T("deadline_30", lang).Replace("{task}", taskText));
                 _taskService.SetTaskReminderStatus(plan.UserId, taskType, 1);
                 return;
             }

@@ -589,16 +589,40 @@ namespace TelegramProductivityBot
         {
             using var connection = new SqliteConnection(_connectionString);
             connection.Open();
-
             var command = connection.CreateCommand();
             command.CommandText = @"
                 INSERT INTO activity_logs (UserId, Type, Value, CreatedDate)
-                VALUES ($userId, $type, $value, $date)
-            ";
+                VALUES ($userId, $type, $value, $date)";
             command.Parameters.AddWithValue("$userId", userId);
             command.Parameters.AddWithValue("$type", type);
             command.Parameters.AddWithValue("$value", value);
-            command.Parameters.AddWithValue("$date", DateTime.UtcNow.ToString("o"));
+            command.Parameters.AddWithValue("$date", DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"));
+            command.ExecuteNonQuery();
+        }
+
+        public string? GetUserLanguage(long userId)
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+            var command = connection.CreateCommand();
+            command.CommandText = "SELECT SettingValue FROM user_settings WHERE UserId = $userId AND SettingKey = 'language'";
+            command.Parameters.AddWithValue("$userId", userId);
+            var result = command.ExecuteScalar();
+            return result?.ToString();
+        }
+
+        public void SetUserLanguage(long userId, string lang)
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+            var command = connection.CreateCommand();
+            command.CommandText = @"
+                INSERT INTO user_settings (UserId, SettingKey, SettingValue) 
+                VALUES ($userId, 'language', $lang)
+                ON CONFLICT(UserId, SettingKey) 
+                DO UPDATE SET SettingValue = $lang";
+            command.Parameters.AddWithValue("$userId", userId);
+            command.Parameters.AddWithValue("$lang", lang);
             command.ExecuteNonQuery();
         }
 

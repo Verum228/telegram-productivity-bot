@@ -156,11 +156,26 @@ namespace TelegramProductivityBot
             }
 
             // Обработка текстовых кнопок (меню)
+            var lang = _taskService.GetUserLanguage(chatId) ?? "ru";
             if (text == "🎯 Фокус") { await SendFocusMenuAsync(chatId, cancellationToken); return; }
-            if (text == "📅 План дня") { await SendPlanMenuAsync(chatId, cancellationToken); return; }
-            if (text == "📊 Статистика") { await SendStatsMenuAsync(chatId, cancellationToken); return; }
-            if (text == "⚙️ Настройки") { await SendSettingsMenuAsync(chatId, cancellationToken); return; }
-            if (text == "⬅ Назад" || text == "⬅️ Назад") { await SendMainMenuAsync(chatId, "Главное меню", cancellationToken); return; }
+            if (text == LocalizationService.T("btn_back", lang) || text == "⬅ Назад" || text == "⬅️ Назад") { await SendMainMenuAsync(chatId, "Главное меню", cancellationToken); return; }
+
+            if (text == "🇷🇺 Русский" || text == "🇬🇧 English") {
+                string selectedLang = text == "🇷🇺 Русский" ? "ru" : "en";
+                string msg = text == "🇷🇺 Русский" ? "Язык изменён на Русский" : "Language changed to English";
+                
+                var oldLang = _taskService.GetUserLanguage(chatId);
+                _taskService.SetUserLanguage(chatId, selectedLang);
+
+                if (string.IsNullOrEmpty(oldLang)) {
+                    await _botClient.SendMessage(chatId, selectedLang == "ru" ? LocalizationService.T("lang_set_ru", "ru") : LocalizationService.T("lang_set_en", "en"), cancellationToken: cancellationToken);
+                    await SendMainMenuAsync(chatId, "Главное меню", cancellationToken);
+                } else {
+                    await _botClient.SendMessage(chatId, msg, cancellationToken: cancellationToken);
+                    await SendSettingsMenuAsync(chatId, cancellationToken);
+                }
+                return;
+            }
 
             // Подсказки для команд с аргументами
             if (text == "➕ Добавить задачу") { await _botClient.SendMessage(chatId, "Для добавления отправьте:\n/addtask [текст задачи]", cancellationToken: cancellationToken); return; }
@@ -168,21 +183,31 @@ namespace TelegramProductivityBot
             if (text == "🗑 Удалить задачу") { await _botClient.SendMessage(chatId, "Для удаления отправьте:\n/delete [номер задачи] (в разработке)", cancellationToken: cancellationToken); return; }
             if (text == "🔔 Анти-лень" || text == "💀 Hard mode" || text == "🔕 Выключить напоминания") { await _botClient.SendMessage(chatId, $"Настройка. Для включения используйте команды /antilen on/off или /hardmode on/off", cancellationToken: cancellationToken); return; }
             
-            if (text == "Анти-лень ВКЛ") { await _antiLazinessService.SetAntiLenAsync(chatId, true); await SendSettingsMenuAsync(chatId, cancellationToken); return; }
-            if (text == "Анти-лень ВЫКЛ") { await _antiLazinessService.SetAntiLenAsync(chatId, false); await SendSettingsMenuAsync(chatId, cancellationToken); return; }
-            if (text == "Hard mode ВКЛ") { await _antiLazinessService.SetHardModeAsync(chatId, true); await SendSettingsMenuAsync(chatId, cancellationToken); return; }
-            if (text == "Hard mode ВЫКЛ") { await _antiLazinessService.SetHardModeAsync(chatId, false); await SendSettingsMenuAsync(chatId, cancellationToken); return; }
+            if (text == LocalizationService.T("settings_antilen_on", lang) || text == "Анти-лень ВКЛ") { await _antiLazinessService.SetAntiLenAsync(chatId, true); await SendSettingsMenuAsync(chatId, cancellationToken); return; }
+            if (text == LocalizationService.T("settings_antilen_off", lang) || text == "Анти-лень ВЫКЛ") { await _antiLazinessService.SetAntiLenAsync(chatId, false); await SendSettingsMenuAsync(chatId, cancellationToken); return; }
+            if (text == LocalizationService.T("settings_hardmode_on", lang) || text == "Hard mode ВКЛ") { await _antiLazinessService.SetHardModeAsync(chatId, true); await SendSettingsMenuAsync(chatId, cancellationToken); return; }
+            if (text == LocalizationService.T("settings_hardmode_off", lang) || text == "Hard mode ВЫКЛ") { await _antiLazinessService.SetHardModeAsync(chatId, false); await SendSettingsMenuAsync(chatId, cancellationToken); return; }
+            if (text == LocalizationService.T("settings_language", lang) || text == "🌍 Language")
+            {
+                var langKeyboard = new Telegram.Bot.Types.ReplyMarkups.ReplyKeyboardMarkup(new[]
+                {
+                    new Telegram.Bot.Types.ReplyMarkups.KeyboardButton[] { "🇷🇺 Русский", "🇬🇧 English" }
+                }) { ResizeKeyboard = true };
+                
+                await _botClient.SendMessage(chatId, LocalizationService.T("lang_select", lang), replyMarkup: langKeyboard, cancellationToken: cancellationToken);
+                return;
+            }
             
             // Кнопки управления планом
-            if (text == "✔ Главная") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 1, true); await SendMainMenuAsync(chatId, "Главное меню", cancellationToken); return; }
-            if (text == "❌ Главная") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 1, false); await SendMainMenuAsync(chatId, "Главное меню", cancellationToken); return; }
-            if (text == "✔ Средняя") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 2, true); await SendMainMenuAsync(chatId, "Главное меню", cancellationToken); return; }
-            if (text == "❌ Средняя") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 2, false); await SendMainMenuAsync(chatId, "Главное меню", cancellationToken); return; }
-            if (text == "✔ Лёгкая") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 3, true); await SendMainMenuAsync(chatId, "Главное меню", cancellationToken); return; }
-            if (text == "❌ Лёгкая") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 3, false); await SendMainMenuAsync(chatId, "Главное меню", cancellationToken); return; }
-            if (text == "⏰ Дедлайн главной") { _editDeadlineStates[chatId] = new EditDeadlineState { TaskType = 1 }; await _botClient.SendMessage(chatId, "Введи дедлайн (HH:mm) или выбери:", replyMarkup: GetDeadlineKeyboard(), cancellationToken: cancellationToken); return; }
-            if (text == "⏰ Дедлайн средней") { _editDeadlineStates[chatId] = new EditDeadlineState { TaskType = 2 }; await _botClient.SendMessage(chatId, "Введи дедлайн (HH:mm) или выбери:", replyMarkup: GetDeadlineKeyboard(), cancellationToken: cancellationToken); return; }
-            if (text == "⏰ Дедлайн лёгкой") { _editDeadlineStates[chatId] = new EditDeadlineState { TaskType = 3 }; await _botClient.SendMessage(chatId, "Введи дедлайн (HH:mm) или выбери:", replyMarkup: GetDeadlineKeyboard(), cancellationToken: cancellationToken); return; }
+            if (text == LocalizationService.T("btn_main_done", lang) || text == "✔ Главная") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 1, true); await SendMainMenuAsync(chatId, "Главное меню", cancellationToken); return; }
+            if (text == LocalizationService.T("btn_main_fail", lang) || text == "❌ Главная") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 1, false); await SendMainMenuAsync(chatId, "Главное меню", cancellationToken); return; }
+            if (text == LocalizationService.T("btn_med_done", lang) || text == "✔ Средняя") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 2, true); await SendMainMenuAsync(chatId, "Главное меню", cancellationToken); return; }
+            if (text == LocalizationService.T("btn_med_fail", lang) || text == "❌ Средняя") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 2, false); await SendMainMenuAsync(chatId, "Главное меню", cancellationToken); return; }
+            if (text == LocalizationService.T("btn_easy_done", lang) || text == "✔ Лёгкая") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 3, true); await SendMainMenuAsync(chatId, "Главное меню", cancellationToken); return; }
+            if (text == LocalizationService.T("btn_easy_fail", lang) || text == "❌ Лёгкая") { await _dayPlanService.ProcessDayPlanTaskAsync(chatId, 3, false); await SendMainMenuAsync(chatId, "Главное меню", cancellationToken); return; }
+            if (text == LocalizationService.T("btn_main_deadline", lang) || text == "⏰ Дедлайн главной") { _editDeadlineStates[chatId] = new EditDeadlineState { TaskType = 1 }; await _botClient.SendMessage(chatId, LocalizationService.T("plan_prompt_main_dl", lang), replyMarkup: GetDeadlineKeyboard(lang), cancellationToken: cancellationToken); return; }
+            if (text == LocalizationService.T("btn_med_deadline", lang) || text == "⏰ Дедлайн средней") { _editDeadlineStates[chatId] = new EditDeadlineState { TaskType = 2 }; await _botClient.SendMessage(chatId, LocalizationService.T("plan_prompt_main_dl", lang), replyMarkup: GetDeadlineKeyboard(lang), cancellationToken: cancellationToken); return; }
+            if (text == LocalizationService.T("btn_easy_deadline", lang) || text == "⏰ Дедлайн лёгкой") { _editDeadlineStates[chatId] = new EditDeadlineState { TaskType = 3 }; await _botClient.SendMessage(chatId, LocalizationService.T("plan_prompt_main_dl", lang), replyMarkup: GetDeadlineKeyboard(lang), cancellationToken: cancellationToken); return; }
             if (text == "📊 График" || text.Trim() == "📊 График" || text.Contains("График"))
             {
                 try 
@@ -190,7 +215,7 @@ namespace TelegramProductivityBot
                     var data = _statisticsService.GetLast7DaysStats(chatId);
                     using var stream = _statisticsService.GenerateGraphImage(data);
                     var photo = Telegram.Bot.Types.InputFile.FromStream(stream, "graph.png");
-                    await _botClient.SendPhotoAsync(chatId, photo, caption: "Твоя продуктивность за последнюю неделю!", cancellationToken: cancellationToken);
+                    await _botClient.SendPhoto(chatId, photo, caption: "Твоя продуктивность за последнюю неделю!", cancellationToken: cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -198,28 +223,29 @@ namespace TelegramProductivityBot
                 }
                 return;
             }
-            if (text == "🗑 Удалить план")
+            if (text == LocalizationService.T("btn_delete_plan", lang) || text == "🗑 Удалить план")
             {
                 _dayPlanService.DeleteDayPlan(chatId);
                 await _botClient.SendMessage(chatId, "План на сегодня удалён.", cancellationToken: cancellationToken);
                 await SendMainMenuAsync(chatId, "Главное меню", cancellationToken);
                 return;
             }
-            if (text == "✏ Изменить задачу" || text == "✏ Изменить")
+            if (text == LocalizationService.T("btn_edit_task", lang) || text == "✏ Изменить задачу" || text == "✏ Изменить")
             {
                 _editPlanStates[chatId] = new EditPlanState { Step = 1 };
-                await _botClient.SendMessage(chatId, "Какую задачу изменить?\n1 Главную\n2 Среднюю\n3 Лёгкую", cancellationToken: cancellationToken);
+                await _botClient.SendMessage(chatId, LocalizationService.T("edit_task_prompt", lang), cancellationToken: cancellationToken);
                 return;
             }
 
             // Маппинг остальных текстовых кнопок в команды
+
             if (text == "📋 Список задач") text = "/tasks";
             else if (text == "⏱ Начать фокус (25)") text = "/focus 25";
             else if (text == "⏱ Начать фокус (50)") text = "/focus 50";
             else if (text == "⏹ Остановить фокус") text = "/stopfocus";
             else if (text == "📊 Статус фокуса") text = "/status";
-            else if (text == "📝 Создать план") text = "/plan";
-            else if (text == "📅 План на сегодня") text = "/today";
+            else if (text == LocalizationService.T("menu_create", lang)) text = "/plan";
+            else if (text == LocalizationService.T("menu_plan", lang)) text = "/today";
             else if (text == "📊 Отчёт дня") text = "/report";
             else if (text == "👤 Профиль" || text == "📊 Профиль") text = "/profile";
             else if (text == "📈 Неделя") text = "/week";
@@ -275,8 +301,11 @@ namespace TelegramProductivityBot
                     await HandleWeekCommandAsync(chatId, cancellationToken);
                     break;
                 case "/streak":
+                    var langStrk = _taskService.GetUserLanguage(chatId) ?? "ru";
                     var streak = _streakService.GetStreak(chatId);
-                    string streakResponse = $"🔥 Streak: {streak.CurrentStreak} дней\nЛучший результат: {streak.BestStreak} дней";
+                    string streakResponse = LocalizationService.T("streak_info", langStrk)
+                                              .Replace("{streak}", streak.CurrentStreak.ToString())
+                                              .Replace("{best}", streak.BestStreak.ToString());
                     await _botClient.SendMessage(chatId, streakResponse, cancellationToken: cancellationToken);
                     break;
                 case "/month":
@@ -287,13 +316,20 @@ namespace TelegramProductivityBot
                     string advice = _adviceService.GetAdvice(chatId);
                     await _botClient.SendMessage(chatId, advice, cancellationToken: cancellationToken);
                     break;
+                case "/settings_menu_trigger":
+                    await SendSettingsMenuAsync(chatId, cancellationToken);
+                    break;
+                case "/stats_menu_trigger":
+                    await SendStatsMenuAsync(chatId, cancellationToken);
+                    break;
                 default:
                     // Если получена неизвестная команда
                     if (text.StartsWith("/"))
                     {
+                        var langUnk = _taskService.GetUserLanguage(chatId) ?? "ru";
                         await _botClient.SendMessage(
                             chatId: chatId,
-                            text: "Используйте кнопки меню.",
+                            text: LocalizationService.T("unknown_command", langUnk),
                             cancellationToken: cancellationToken);
                     }
                     else
@@ -309,7 +345,19 @@ namespace TelegramProductivityBot
         /// </summary>
         private async Task HandleStartCommandAsync(long chatId, CancellationToken cancellationToken)
         {
-            string startMessage = "Привет. Я бот продуктивности.\nЯ помогу тебе не лениться.";
+            var lang = _taskService.GetUserLanguage(chatId);
+            if (string.IsNullOrEmpty(lang))
+            {
+                var langKeyboard = new Telegram.Bot.Types.ReplyMarkups.ReplyKeyboardMarkup(new[]
+                {
+                    new Telegram.Bot.Types.ReplyMarkups.KeyboardButton[] { "🇷🇺 Русский", "🇬🇧 English" }
+                }) { ResizeKeyboard = true };
+                
+                await _botClient.SendMessage(chatId, "Выбери язык / Choose language", replyMarkup: langKeyboard, cancellationToken: cancellationToken);
+                return;
+            }
+
+            string startMessage = LocalizationService.T("start", lang);
             await SendMainMenuAsync(chatId, startMessage, cancellationToken);
         }
 
@@ -318,10 +366,17 @@ namespace TelegramProductivityBot
         /// </summary>
         private async Task SendMainMenuAsync(long chatId, string text, CancellationToken cancellationToken)
         {
-            var replyKeyboardMarkup = new ReplyKeyboardMarkup(new[]
+            var lang = _taskService.GetUserLanguage(chatId) ?? "ru";
+
+            var btnPlanToday = LocalizationService.T("menu_plan", lang);
+            var btnCreatePlan = LocalizationService.T("menu_create", lang);
+            var btnStats = LocalizationService.T("menu_stats", lang);
+            var btnSettings = LocalizationService.T("menu_settings", lang);
+
+            var replyKeyboardMarkup = new Telegram.Bot.Types.ReplyMarkups.ReplyKeyboardMarkup(new[]
             {
-                new KeyboardButton[] { "📅 План на сегодня", "📝 Создать план" },
-                new KeyboardButton[] { "📊 Статистика", "⚙️ Настройки" }
+                new Telegram.Bot.Types.ReplyMarkups.KeyboardButton[] { btnPlanToday, btnCreatePlan },
+                new Telegram.Bot.Types.ReplyMarkups.KeyboardButton[] { btnStats, btnSettings }
             })
             {
                 ResizeKeyboard = true
@@ -456,22 +511,30 @@ namespace TelegramProductivityBot
         /// </summary>
         private async Task SendSettingsMenuAsync(long chatId, CancellationToken cancellationToken)
         {
+            var lang = _taskService.GetUserLanguage(chatId) ?? "ru";
             bool antiLenActive = _antiLazinessService.IsAntiLenActive(chatId);
             bool hardModeActive = _antiLazinessService.IsHardModeActive(chatId);
 
-            var replyKeyboardMarkup = new ReplyKeyboardMarkup(new[]
+            string btnAntiLen = antiLenActive ? LocalizationService.T("settings_antilen_off", lang) : LocalizationService.T("settings_antilen_on", lang);
+            string btnHardMode = hardModeActive ? LocalizationService.T("settings_hardmode_off", lang) : LocalizationService.T("settings_hardmode_on", lang);
+
+            var replyKeyboardMarkup = new Telegram.Bot.Types.ReplyMarkups.ReplyKeyboardMarkup(new[]
             {
-                new KeyboardButton[] { antiLenActive ? "Анти-лень ВЫКЛ" : "Анти-лень ВКЛ" },
-                new KeyboardButton[] { hardModeActive ? "Hard mode ВЫКЛ" : "Hard mode ВКЛ" },
-                new KeyboardButton[] { "⬅ Назад" }
+                new Telegram.Bot.Types.ReplyMarkups.KeyboardButton[] { btnAntiLen },
+                new Telegram.Bot.Types.ReplyMarkups.KeyboardButton[] { btnHardMode },
+                new Telegram.Bot.Types.ReplyMarkups.KeyboardButton[] { LocalizationService.T("settings_language", lang) },
+                new Telegram.Bot.Types.ReplyMarkups.KeyboardButton[] { LocalizationService.T("btn_back", lang) }
             })
             {
                 ResizeKeyboard = true
             };
 
-            string response = $"⚙️ Настройки:\n\n" +
-                              $"Анти-лень: {(antiLenActive ? "ВКЛ" : "ВЫКЛ")}\n" +
-                              $"Hard mode: {(hardModeActive ? "ВКЛ" : "ВЫКЛ")}";
+            string antilenState = antiLenActive ? LocalizationService.T("state_on", lang) : LocalizationService.T("state_off", lang);
+            string hardmodeState = hardModeActive ? LocalizationService.T("state_on", lang) : LocalizationService.T("state_off", lang);
+
+            string response = LocalizationService.T("settings_overview", lang)
+                               .Replace("{antilen}", antilenState)
+                               .Replace("{hardmode}", hardmodeState);
 
             await _botClient.SendMessage(chatId, response, replyMarkup: replyKeyboardMarkup, cancellationToken: cancellationToken);
         }
@@ -532,6 +595,7 @@ namespace TelegramProductivityBot
         /// </summary>
         private async Task HandleAntiLenCommandAsync(long chatId, string fullText, CancellationToken cancellationToken)
         {
+            var lang = _taskService.GetUserLanguage(chatId) ?? "ru";
             var parts = fullText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length > 1 && parts[1].ToLower() == "on")
             {
@@ -543,7 +607,7 @@ namespace TelegramProductivityBot
             }
             else
             {
-                await _botClient.SendMessage(chatId, "Использование: /antilen on или /antilen off", cancellationToken: cancellationToken);
+                await _botClient.SendMessage(chatId, LocalizationService.T("config_usage_antilen", lang), cancellationToken: cancellationToken);
             }
         }
 
@@ -552,6 +616,7 @@ namespace TelegramProductivityBot
         /// </summary>
         private async Task HandleHardModeCommandAsync(long chatId, string fullText, CancellationToken cancellationToken)
         {
+            var lang = _taskService.GetUserLanguage(chatId) ?? "ru";
             var parts = fullText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length > 1 && parts[1].ToLower() == "on")
             {
@@ -563,7 +628,7 @@ namespace TelegramProductivityBot
             }
             else
             {
-                await _botClient.SendMessage(chatId, "Использование: /hardmode on или /hardmode off", cancellationToken: cancellationToken);
+                await _botClient.SendMessage(chatId, LocalizationService.T("config_usage_hardmode", lang), cancellationToken: cancellationToken);
             }
         }
 
@@ -572,10 +637,14 @@ namespace TelegramProductivityBot
         /// </summary>
         private async Task HandleLevelCommandAsync(long chatId, CancellationToken cancellationToken)
         {
+            var lang = _taskService.GetUserLanguage(chatId) ?? "ru";
             var profile = _statsService.GetProfile(chatId);
             int nextLevelXp = profile.Level * 100;
             
-            string response = $"Твой уровень: {profile.Level}\nXP: {profile.XP} / {nextLevelXp}";
+            string response = LocalizationService.T("level_info", lang)
+                               .Replace("{level}", profile.Level.ToString())
+                               .Replace("{xp}", profile.XP.ToString())
+                               .Replace("{nextLevelXp}", nextLevelXp.ToString());
             
             await _botClient.SendMessage(chatId, response, cancellationToken: cancellationToken);
         }
@@ -585,13 +654,14 @@ namespace TelegramProductivityBot
         /// </summary>
         private async Task HandleProfileCommandAsync(long chatId, CancellationToken cancellationToken)
         {
+            var lang = _taskService.GetUserLanguage(chatId) ?? "ru";
             var profile = _statsService.GetProfile(chatId);
             
-            string response = $"Статистика:\n\n" +
-                              $"Уровень: {profile.Level}\n" +
-                              $"XP: {profile.XP}\n" +
-                              $"Выполнено задач: {profile.TasksCompleted}\n" +
-                              $"Фокус-сессий: {profile.FocusSessions}";
+            string response = LocalizationService.T("profile_info", lang)
+                               .Replace("{level}", profile.Level.ToString())
+                               .Replace("{xp}", profile.XP.ToString())
+                               .Replace("{tasksCompleted}", profile.TasksCompleted.ToString())
+                               .Replace("{focusSessions}", profile.FocusSessions.ToString());
             
             await _botClient.SendMessage(chatId, response, cancellationToken: cancellationToken);
         }
@@ -601,10 +671,11 @@ namespace TelegramProductivityBot
         /// </summary>
         private async Task HandlePlanCommandAsync(long chatId, CancellationToken cancellationToken)
         {
+            var lang = _taskService.GetUserLanguage(chatId) ?? "ru";
             var existingPlan = _dayPlanService.GetTodayPlan(chatId);
             if (existingPlan != null)
             {
-                await _botClient.SendMessage(chatId, "У тебя уже есть план на сегодня. Используй меню «План на сегодня» для изменения или удаления.", cancellationToken: cancellationToken);
+                await _botClient.SendMessage(chatId, LocalizationService.T("plan_already_exists", lang), cancellationToken: cancellationToken);
                 await HandleTodayCommandAsync(chatId, cancellationToken);
                 return;
             }
@@ -612,7 +683,7 @@ namespace TelegramProductivityBot
             var newState = new PlanFormState { Step = 1 };
             _planStates[chatId] = newState;
 
-            await _botClient.SendMessage(chatId, "Главная задача дня (самая важная)", cancellationToken: cancellationToken);
+            await _botClient.SendMessage(chatId, LocalizationService.T("plan_prompt_main", lang), cancellationToken: cancellationToken);
         }
 
         /// <summary>
@@ -621,10 +692,11 @@ namespace TelegramProductivityBot
         private async Task HandleTodayCommandAsync(long chatId, CancellationToken cancellationToken)
         {
             var plan = _dayPlanService.GetTodayPlan(chatId);
+            var lang = _taskService.GetUserLanguage(chatId) ?? "ru";
             if (plan == null)
             {
-                var emptyMarkup = new ReplyKeyboardMarkup(new[] { new KeyboardButton[] { "📝 Создать план" }, new KeyboardButton[] { "⬅ Назад" } }) { ResizeKeyboard = true };
-                await _botClient.SendMessage(chatId, "У тебя ещё нет плана на сегодня", replyMarkup: emptyMarkup, cancellationToken: cancellationToken);
+                var emptyMarkup = new ReplyKeyboardMarkup(new[] { new KeyboardButton[] { LocalizationService.T("menu_create", lang) }, new KeyboardButton[] { "⬅ Назад" } }) { ResizeKeyboard = true };
+                await _botClient.SendMessage(chatId, LocalizationService.T("no_plan", lang), replyMarkup: emptyMarkup, cancellationToken: cancellationToken);
                 return;
             }
 
@@ -632,13 +704,14 @@ namespace TelegramProductivityBot
             string mediumStatus = plan.MediumDone ? "✔" : plan.MediumFailed ? "❌" : "⏳";
             string easyStatus = plan.EasyDone ? "✔" : plan.EasyFailed ? "❌" : "⏳";
 
-            string mainDeadlineStr = plan.MainDeadline != null ? $"До {plan.MainDeadline}" : "Без дедлайна";
-            string medDeadlineStr = plan.MediumDeadline != null ? $"До {plan.MediumDeadline}" : "Без дедлайна";
-            string easyDeadlineStr = plan.EasyDeadline != null ? $"До {plan.EasyDeadline}" : "Без дедлайна";
+            string mainDeadlineStr = plan.MainDeadline != null ? LocalizationService.T("deadline_until", lang).Replace("{time}", plan.MainDeadline) : LocalizationService.T("deadline_none", lang);
+            string medDeadlineStr = plan.MediumDeadline != null ? LocalizationService.T("deadline_until", lang).Replace("{time}", plan.MediumDeadline) : LocalizationService.T("deadline_none", lang);
+            string easyDeadlineStr = plan.EasyDeadline != null ? LocalizationService.T("deadline_until", lang).Replace("{time}", plan.EasyDeadline) : LocalizationService.T("deadline_none", lang);
 
-            string response = $"🔥 Главная задача\n{plan.MainTask}\n⏰ {mainDeadlineStr}\n{mainStatus}\n\n" +
-                              $"⚙️ Средняя задача\n{plan.MediumTask}\n⏰ {medDeadlineStr}\n{mediumStatus}\n\n" +
-                              $"🟢 Лёгкая задача\n{plan.EasyTask}\n⏰ {easyDeadlineStr}\n{easyStatus}";
+            string response = $"{LocalizationService.T("today_title", lang)}\n\n" +
+                              $"🔥 {LocalizationService.T("task_main", lang)}\n{plan.MainTask}\n⏰ {mainDeadlineStr}\n{mainStatus}\n\n" +
+                              $"⚙️ {LocalizationService.T("task_medium", lang)}\n{plan.MediumTask}\n⏰ {medDeadlineStr}\n{mediumStatus}\n\n" +
+                              $"🟢 {LocalizationService.T("task_easy", lang)}\n{plan.EasyTask}\n⏰ {easyDeadlineStr}\n{easyStatus}";
 
             var replyKeyboardMarkup = new ReplyKeyboardMarkup(new[]
             {
@@ -660,42 +733,43 @@ namespace TelegramProductivityBot
         /// </summary>
         private async Task HandlePlanStepAsync(long chatId, string text, PlanFormState state, CancellationToken cancellationToken)
         {
+            var lang = _taskService.GetUserLanguage(chatId) ?? "ru";
             switch (state.Step)
             {
                 case 1:
                     state.DraftPlan.MainTask = text;
                     state.Step = 2;
-                    await _botClient.SendMessage(chatId, "Дедлайн для главной задачи (введите HH:mm или нажмите кнопку):", replyMarkup: GetDeadlineKeyboard(), cancellationToken: cancellationToken);
+                    await _botClient.SendMessage(chatId, LocalizationService.T("plan_prompt_main_dl", lang), replyMarkup: GetDeadlineKeyboard(lang), cancellationToken: cancellationToken);
                     break;
 
                 case 2:
-                    if (!TryParseDeadline(text, out string? mainDl, out string err1)) { await _botClient.SendMessage(chatId, err1, cancellationToken: cancellationToken); return; }
+                    if (!TryParseDeadline(text, lang, out string? mainDl, out string err1)) { await _botClient.SendMessage(chatId, err1, cancellationToken: cancellationToken); return; }
                     state.DraftPlan.MainDeadline = mainDl;
                     state.Step = 3;
-                    await _botClient.SendMessage(chatId, "Средняя задача дня", replyMarkup: new ReplyKeyboardRemove(), cancellationToken: cancellationToken);
+                    await _botClient.SendMessage(chatId, LocalizationService.T("plan_prompt_medium", lang), replyMarkup: new ReplyKeyboardRemove(), cancellationToken: cancellationToken);
                     break;
 
                 case 3:
                     state.DraftPlan.MediumTask = text;
                     state.Step = 4;
-                    await _botClient.SendMessage(chatId, "Дедлайн для средней задачи:", replyMarkup: GetDeadlineKeyboard(), cancellationToken: cancellationToken);
+                    await _botClient.SendMessage(chatId, LocalizationService.T("plan_prompt_medium_dl", lang), replyMarkup: GetDeadlineKeyboard(lang), cancellationToken: cancellationToken);
                     break;
 
                 case 4:
-                    if (!TryParseDeadline(text, out string? medDl, out string err2)) { await _botClient.SendMessage(chatId, err2, cancellationToken: cancellationToken); return; }
+                    if (!TryParseDeadline(text, lang, out string? medDl, out string err2)) { await _botClient.SendMessage(chatId, err2, cancellationToken: cancellationToken); return; }
                     state.DraftPlan.MediumDeadline = medDl;
                     state.Step = 5;
-                    await _botClient.SendMessage(chatId, "Лёгкая задача дня", replyMarkup: new ReplyKeyboardRemove(), cancellationToken: cancellationToken);
+                    await _botClient.SendMessage(chatId, LocalizationService.T("plan_prompt_easy", lang), replyMarkup: new ReplyKeyboardRemove(), cancellationToken: cancellationToken);
                     break;
 
                 case 5:
                     state.DraftPlan.EasyTask = text;
                     state.Step = 6;
-                    await _botClient.SendMessage(chatId, "Дедлайн для лёгкой задачи:", replyMarkup: GetDeadlineKeyboard(), cancellationToken: cancellationToken);
+                    await _botClient.SendMessage(chatId, LocalizationService.T("plan_prompt_easy_dl", lang), replyMarkup: GetDeadlineKeyboard(lang), cancellationToken: cancellationToken);
                     break;
 
                 case 6:
-                    if (!TryParseDeadline(text, out string? easyDl, out string err3)) { await _botClient.SendMessage(chatId, err3, cancellationToken: cancellationToken); return; }
+                    if (!TryParseDeadline(text, lang, out string? easyDl, out string err3)) { await _botClient.SendMessage(chatId, err3, cancellationToken: cancellationToken); return; }
                     state.DraftPlan.EasyDeadline = easyDl;
                     state.DraftPlan.UserId = chatId;
                     
@@ -705,7 +779,7 @@ namespace TelegramProductivityBot
                     // Завершаем форму
                     _planStates.TryRemove(chatId, out _);
 
-                    await _botClient.SendMessage(chatId, "План на сегодня сохранён.", replyMarkup: new ReplyKeyboardRemove(), cancellationToken: cancellationToken);
+                    await _botClient.SendMessage(chatId, LocalizationService.T("plan_saved", lang), replyMarkup: new ReplyKeyboardRemove(), cancellationToken: cancellationToken);
                     await HandleTodayCommandAsync(chatId, cancellationToken);
                     break;
             }
@@ -728,18 +802,22 @@ namespace TelegramProductivityBot
         /// </summary>
         private async Task HandleEditPlanStepAsync(long chatId, string text, EditPlanState state, CancellationToken cancellationToken)
         {
+            var lang = _taskService.GetUserLanguage(chatId) ?? "ru";
             if (state.Step == 1)
             {
                 if (text == "1" || text == "2" || text == "3")
                 {
                     state.TaskTypeToEdit = int.Parse(text);
                     state.Step = 2;
-                    string name = state.TaskTypeToEdit == 1 ? "Главную" : state.TaskTypeToEdit == 2 ? "Среднюю" : "Лёгкую";
-                    await _botClient.SendMessage(chatId, $"Введи новый текст для {name} задачи:", cancellationToken: cancellationToken);
+                    string mainName = LocalizationService.T("task_main", lang);
+                    string medName = LocalizationService.T("task_medium", lang);
+                    string easyName = LocalizationService.T("task_easy", lang);
+                    string name = state.TaskTypeToEdit == 1 ? mainName : state.TaskTypeToEdit == 2 ? medName : easyName;
+                    await _botClient.SendMessage(chatId, LocalizationService.T("edit_task_enter_text", lang).Replace("{task}", name), cancellationToken: cancellationToken);
                 }
                 else
                 {
-                    await _botClient.SendMessage(chatId, "Пожалуйста, выбери номер задачи (1, 2 или 3). Если хочешь выйти из редактирования, напиши 0.", cancellationToken: cancellationToken);
+                    await _botClient.SendMessage(chatId, LocalizationService.T("edit_task_invalid", lang), cancellationToken: cancellationToken);
                     if (text == "0" || text == "Отмена")
                     {
                         _editPlanStates.TryRemove(chatId, out _);
@@ -759,6 +837,7 @@ namespace TelegramProductivityBot
 
         private async Task HandleEditDeadlineStepAsync(long chatId, string text, EditDeadlineState state, CancellationToken cancellationToken)
         {
+            var lang = _taskService.GetUserLanguage(chatId) ?? "ru";
             if (text == "Отмена" || text == "0")
             {
                 _editDeadlineStates.TryRemove(chatId, out _);
@@ -766,7 +845,7 @@ namespace TelegramProductivityBot
                 return;
             }
 
-            if (!TryParseDeadline(text, out string? dl, out string err))
+            if (!TryParseDeadline(text, lang, out string? dl, out string err))
             {
                 await _botClient.SendMessage(chatId, err, cancellationToken: cancellationToken);
                 return;
@@ -775,24 +854,24 @@ namespace TelegramProductivityBot
             _taskService.SetTaskDeadline(chatId, state.TaskType, dl);
             _editDeadlineStates.TryRemove(chatId, out _);
             
-            await _botClient.SendMessage(chatId, $"Дедлайн сохранён: {(dl ?? "Без дедлайна")}", replyMarkup: new ReplyKeyboardRemove(), cancellationToken: cancellationToken);
+            await _botClient.SendMessage(chatId, LocalizationService.T("deadline_saved", lang).Replace("{time}", dl ?? LocalizationService.T("deadline_none", lang)), replyMarkup: new ReplyKeyboardRemove(), cancellationToken: cancellationToken);
             await HandleTodayCommandAsync(chatId, cancellationToken);
         }
 
-        private ReplyKeyboardMarkup GetDeadlineKeyboard()
+        private ReplyKeyboardMarkup GetDeadlineKeyboard(string lang)
         {
             return new ReplyKeyboardMarkup(new[]
             {
-                new KeyboardButton[] { "Без дедлайна" }
+                new KeyboardButton[] { LocalizationService.T("deadline_none", lang) }
             }) { ResizeKeyboard = true, OneTimeKeyboard = true };
         }
 
-        private bool TryParseDeadline(string text, out string? formattedTime, out string errorMessage)
+        private bool TryParseDeadline(string text, string lang, out string? formattedTime, out string errorMessage)
         {
             formattedTime = null;
             errorMessage = "";
             
-            if (text == "Без дедлайна") return true;
+            if (text == LocalizationService.T("deadline_none", lang)) return true;
 
             if (TimeSpan.TryParse(text, out TimeSpan ts))
             {
@@ -800,7 +879,7 @@ namespace TelegramProductivityBot
                 return true;
             }
             
-            errorMessage = "Пожалуйста, введите время в правильном формате (например, 18:30) или нажмите 'Без дедлайна'.";
+            errorMessage = LocalizationService.T("deadline_invalid", lang);
             return false;
         }
     }
