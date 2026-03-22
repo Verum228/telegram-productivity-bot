@@ -185,10 +185,10 @@ namespace TelegramProductivityBot
             if (text == "🗑 Удалить задачу") { await _botClient.SendMessage(chatId, "Для удаления отправьте:\n/delete [номер задачи] (в разработке)", cancellationToken: cancellationToken); return; }
             if (text == "🔔 Анти-лень" || text == "💀 Hard mode" || text == "🔕 Выключить напоминания") { await _botClient.SendMessage(chatId, $"Настройка. Для включения используйте команды /antilen on/off или /hardmode on/off", cancellationToken: cancellationToken); return; }
             
-            if (text == LocalizationService.T("settings_antilen_on", lang) || text == "Анти-лень ВКЛ") { await _antiLazinessService.SetAntiLenAsync(chatId, true); await SendSettingsMenuAsync(chatId, cancellationToken); return; }
-            if (text == LocalizationService.T("settings_antilen_off", lang) || text == "Анти-лень ВЫКЛ") { await _antiLazinessService.SetAntiLenAsync(chatId, false); await SendSettingsMenuAsync(chatId, cancellationToken); return; }
-            if (text == LocalizationService.T("settings_hardmode_on", lang) || text == "Hard mode ВКЛ") { await _antiLazinessService.SetHardModeAsync(chatId, true); await SendSettingsMenuAsync(chatId, cancellationToken); return; }
-            if (text == LocalizationService.T("settings_hardmode_off", lang) || text == "Hard mode ВЫКЛ") { await _antiLazinessService.SetHardModeAsync(chatId, false); await SendSettingsMenuAsync(chatId, cancellationToken); return; }
+            if (text == LocalizationService.T("settings_antilen_on", lang) || text == "Анти-лень ВКЛ") { await _antiLazinessService.SetAntiLenAsync(chatId, true, lang); await SendSettingsMenuAsync(chatId, cancellationToken); return; }
+            if (text == LocalizationService.T("settings_antilen_off", lang) || text == "Анти-лень ВЫКЛ") { await _antiLazinessService.SetAntiLenAsync(chatId, false, lang); await SendSettingsMenuAsync(chatId, cancellationToken); return; }
+            if (text == LocalizationService.T("settings_hardmode_on", lang) || text == "Hard mode ВКЛ") { await _antiLazinessService.SetHardModeAsync(chatId, true, lang); await SendSettingsMenuAsync(chatId, cancellationToken); return; }
+            if (text == LocalizationService.T("settings_hardmode_off", lang) || text == "Hard mode ВЫКЛ") { await _antiLazinessService.SetHardModeAsync(chatId, false, lang); await SendSettingsMenuAsync(chatId, cancellationToken); return; }
             if (text == LocalizationService.T("settings_language", lang) || text == "🌍 Language")
             {
                 var langKeyboard = new Telegram.Bot.Types.ReplyMarkups.ReplyKeyboardMarkup(new[]
@@ -608,11 +608,11 @@ namespace TelegramProductivityBot
             var parts = fullText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length > 1 && parts[1].ToLower() == "on")
             {
-                await _antiLazinessService.SetAntiLenAsync(chatId, true);
+                await _antiLazinessService.SetAntiLenAsync(chatId, true, lang);
             }
             else if (parts.Length > 1 && parts[1].ToLower() == "off")
             {
-                await _antiLazinessService.SetAntiLenAsync(chatId, false);
+                await _antiLazinessService.SetAntiLenAsync(chatId, false, lang);
             }
             else
             {
@@ -629,11 +629,11 @@ namespace TelegramProductivityBot
             var parts = fullText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length > 1 && parts[1].ToLower() == "on")
             {
-                await _antiLazinessService.SetHardModeAsync(chatId, true);
+                await _antiLazinessService.SetHardModeAsync(chatId, true, lang);
             }
             else if (parts.Length > 1 && parts[1].ToLower() == "off")
             {
-                await _antiLazinessService.SetHardModeAsync(chatId, false);
+                await _antiLazinessService.SetHardModeAsync(chatId, false, lang);
             }
             else
             {

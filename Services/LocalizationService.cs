@@ -86,6 +86,22 @@ namespace TelegramProductivityBot.Services
                 { "ru", "Hard mode ВЫКЛ" },
                 { "en", "Hard mode OFF" }
             }},
+            { "mode_enabled", new Dictionary<string, string> {
+                { "ru", "включён" },
+                { "en", "enabled" }
+            }},
+            { "mode_disabled", new Dictionary<string, string> {
+                { "ru", "выключен" },
+                { "en", "disabled" }
+            }},
+            { "antilen_status", new Dictionary<string, string> {
+                { "ru", "Анти-лень режим {status}. Ожидайте напоминания." },
+                { "en", "Anti-laziness mode {status}. Expect reminders." }
+            }},
+            { "hardmode_status", new Dictionary<string, string> {
+                { "ru", "Жёсткий режим (hardmode) {status}. Бот будет спрашивать, чем вы заняты." },
+                { "en", "Hard mode {status}. The bot will ask what you are doing." }
+            }},
             { "settings_language", new Dictionary<string, string> {
                 { "ru", "🌍 Язык" },
                 { "en", "🌍 Language" }
@@ -290,6 +306,46 @@ namespace TelegramProductivityBot.Services
             { "stats_advice", new Dictionary<string, string> {
                 { "ru", "💡 Совет" },
                 { "en", "💡 Advice" }
+            }},
+            { "anti_reminder_12", new Dictionary<string, string> {
+                { "ru", "Ты ещё не сделал ни одной задачи из плана дня. Обязательно начни с самой важной!" },
+                { "en", "You haven't completed any tasks from today's plan yet. Be sure to start with the most important one!" }
+            }},
+            { "anti_reminder_18", new Dictionary<string, string> {
+                { "ru", "Ещё не было выполнения задач сегодня. Хочешь включить жёсткий режим? (Настройки -> Hard mode ВКЛ)" },
+                { "en", "No tasks completed today yet. Want to enable Hard mode? (Settings -> Hard mode ON)" }
+            }},
+            { "hardmode_penalty", new Dictionary<string, string> {
+                { "ru", "Ты не отвечаешь 3 раза подряд! Выписан штраф -15 XP ❌" },
+                { "en", "You haven't replied 3 times in a row! Penalty of -15 XP issued ❌" }
+            }},
+            { "hardmode_question_0", new Dictionary<string, string> {
+                { "ru", "⏳ Чем ты сейчас занимаешься?" },
+                { "en", "⏳ What are you doing right now?" }
+            }},
+            { "hardmode_question_1", new Dictionary<string, string> {
+                { "ru", "⚠️ Ты отвлёкся?" },
+                { "en", "⚠️ Did you get distracted?" }
+            }},
+            { "hardmode_question_2", new Dictionary<string, string> {
+                { "ru", "🔥 Вернись к задаче!" },
+                { "en", "🔥 Get back to work!" }
+            }},
+            { "hardmode_question_3", new Dictionary<string, string> {
+                { "ru", "⏳ Время идёт. Чем занят?" },
+                { "en", "⏳ Time is ticking. What are you up to?" }
+            }},
+            { "hardmode_question_4", new Dictionary<string, string> {
+                { "ru", "⚠️ На чём сейчас фокус?" },
+                { "en", "⚠️ What's your focus right now?" }
+            }},
+            { "hardmode_question_5", new Dictionary<string, string> {
+                { "ru", "🔥 Пора продолжать работу!" },
+                { "en", "🔥 Time to continue working!" }
+            }},
+            { "hardmode_question_6", new Dictionary<string, string> {
+                { "ru", "⏳ Как успехи? Вернись к задаче!" },
+                { "en", "⏳ How is it going? Get back to the task!" }
             }},
             { "unknown_command", new Dictionary<string, string> {
                 { "ru", "Используйте кнопки меню." },

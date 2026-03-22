@@ -22,13 +22,13 @@ namespace TelegramProductivityBot.Services
 
         private readonly string[] _hardModeQuestions = new[]
         {
-            "⏳ Чем ты сейчас занимаешься?",
-            "⚠️ Ты отвлёкся?",
-            "🔥 Вернись к задаче!",
-            "⏳ Время идёт. Чем занят?",
-            "⚠️ На чём сейчас фокус?",
-            "🔥 Пора продолжать работу!",
-            "⏳ Как успехи? Вернись к задаче!"
+            "hardmode_question_0",
+            "hardmode_question_1",
+            "hardmode_question_2",
+            "hardmode_question_3",
+            "hardmode_question_4",
+            "hardmode_question_5",
+            "hardmode_question_6"
         };
 
         public AntiLazinessService(ITelegramBotClient botClient, TaskService taskService, StatsService statsService)
@@ -49,11 +49,12 @@ namespace TelegramProductivityBot.Services
             _cts.Cancel();
         }
 
-        public async Task SetAntiLenAsync(long userId, bool enabled)
+        public async Task SetAntiLenAsync(long userId, bool enabled, string lang)
         {
             _taskService.SetSetting(userId, "antilen", enabled ? "1" : "0");
-            string status = enabled ? "включён" : "выключен";
-            await _botClient.SendMessage(chatId: userId, text: $"Анти-лень режим {status}. Ожидайте напоминания.");
+            string status = enabled ? LocalizationService.T("mode_enabled", lang) : LocalizationService.T("mode_disabled", lang);
+            string response = LocalizationService.T("antilen_status", lang).Replace("{status}", status);
+            await _botClient.SendMessage(chatId: userId, text: response);
         }
 
         public bool IsAntiLenActive(long userId)
@@ -68,12 +69,13 @@ namespace TelegramProductivityBot.Services
             return users.Contains(userId);
         }
 
-        public async Task SetHardModeAsync(long userId, bool enabled)
+        public async Task SetHardModeAsync(long userId, bool enabled, string lang)
         {
             _taskService.SetSetting(userId, "hardmode", enabled ? "1" : "0");
             if (enabled) _missedChecks[userId] = 0; // Сбрасываем счётчик пропущенных
-            string status = enabled ? "включён" : "выключен";
-            await _botClient.SendMessage(chatId: userId, text: $"Жёсткий режим (hardmode) {status}. Бот будет спрашивать, чем вы заняты.");
+            string status = enabled ? LocalizationService.T("mode_enabled", lang) : LocalizationService.T("mode_disabled", lang);
+            string response = LocalizationService.T("hardmode_status", lang).Replace("{status}", status);
+            await _botClient.SendMessage(chatId: userId, text: response);
         }
 
         /// <summary>
@@ -105,7 +107,8 @@ namespace TelegramProductivityBot.Services
                         {
                             if (_taskService.GetTasksCompletedToday(userId) == 0)
                             {
-                                await _botClient.SendMessage(chatId: userId, text: "Ты ещё не сделал ни одной задачи из плана дня. Обязательно начни с самой важной!", cancellationToken: token);
+                                var lang = _taskService.GetUserLanguage(userId);
+                                await _botClient.SendMessage(chatId: userId, text: LocalizationService.T("anti_reminder_12", lang), cancellationToken: token);
                             }
                         }
                         // Ждём 1 минуту, чтобы не спамить в 12:00
@@ -118,7 +121,8 @@ namespace TelegramProductivityBot.Services
                         {
                             if (_taskService.GetTasksCompletedToday(userId) == 0)
                             {
-                                await _botClient.SendMessage(chatId: userId, text: "Ещё не было выполнения задач сегодня. Хочешь включить жёсткий режим? (Настройки -> Hard mode ВКЛ)", cancellationToken: token);
+                                var lang = _taskService.GetUserLanguage(userId);
+                                await _botClient.SendMessage(chatId: userId, text: LocalizationService.T("anti_reminder_18", lang), cancellationToken: token);
                             }
                         }
                         await Task.Delay(TimeSpan.FromMinutes(1), token);
@@ -164,9 +168,10 @@ namespace TelegramProductivityBot.Services
                             {
                                 // Наказываем -15 XP вместо задачи
                                 _statsService.AddXP(userId, -15);
+                                var lang = _taskService.GetUserLanguage(userId);
                                 await _botClient.SendMessage(
                                     chatId: userId,
-                                    text: "Ты не отвечаешь 3 раза подряд! Выписан штраф -15 XP ❌",
+                                    text: LocalizationService.T("hardmode_penalty", lang),
                                     cancellationToken: token);
                                     
                                 _missedChecks[userId] = 0; // Сбрасываем после штрафа
@@ -174,10 +179,11 @@ namespace TelegramProductivityBot.Services
                             else
                             {
                                 // Выбираем случайный вопрос
-                                string question = _hardModeQuestions[rnd.Next(_hardModeQuestions.Length)];
+                                string questionKey = _hardModeQuestions[rnd.Next(_hardModeQuestions.Length)];
+                                var lang = _taskService.GetUserLanguage(userId);
                                 await _botClient.SendMessage(
                                     chatId: userId,
-                                    text: question,
+                                    text: LocalizationService.T(questionKey, lang),
                                     cancellationToken: token);
                             }
                         }
