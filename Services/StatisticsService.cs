@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Imaging;
-using System.Drawing.Text;
 using System.IO;
+using SkiaSharp;
 
 namespace TelegramProductivityBot.Services
 {
@@ -44,68 +42,115 @@ namespace TelegramProductivityBot.Services
         {
             int width = 800;
             int height = 500;
-            Bitmap bmp = new Bitmap(width, height);
+            
+            var info = new SKImageInfo(width, height);
+            using var surface = SKSurface.Create(info);
+            var canvas = surface.Canvas;
+            
+            canvas.Clear(SKColors.White);
 
-            using (Graphics g = Graphics.FromImage(bmp))
+            using var titlePaint = new SKPaint
             {
-                g.Clear(Color.White);
-                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                Color = SKColors.Black,
+                IsAntialias = true,
+                TextSize = 24,
+                Typeface = SKTypeface.Default,
+                IsStroke = false
+            };
 
-                // For linux/cross-platform compatibility, use generic fonts if Arial is missing
-                Font titleFont = new Font(FontFamily.GenericSansSerif, 24, FontStyle.Bold);
-                Font labelFont = new Font(FontFamily.GenericSansSerif, 16);
-                Pen drawPen = new Pen(Color.Black, 2);
-                Brush barBrush = new SolidBrush(Color.FromArgb(100, 150, 250));
-                
-                g.DrawString("Твоя продуктивность за 7 дней", titleFont, Brushes.Black, new PointF(100, 20));
+            using var labelPaint = new SKPaint
+            {
+                Color = SKColors.Black,
+                IsAntialias = true,
+                TextSize = 18,
+                Typeface = SKTypeface.Default,
+                IsStroke = false
+            };
 
-                int startX = 100;
-                int endX = 750;
-                int startY = 400;
-                
-                g.DrawLine(drawPen, startX, startY, endX, startY);
-                g.DrawLine(drawPen, startX, startY, startX, 100);
+            using var linePaint = new SKPaint
+            {
+                Color = SKColors.Black,
+                StrokeWidth = 2,
+                IsAntialias = true,
+                IsStroke = true
+            };
 
-                for (int i = 0; i <= 3; i++)
-                {
-                    int y = startY - (i * 80);
-                    g.DrawString(i.ToString(), labelFont, Brushes.Black, startX - 40, y - 12);
-                    g.DrawLine(new Pen(Color.LightGray, 1), startX, y, endX, y);
-                }
+            using var gridPaint = new SKPaint
+            {
+                Color = SKColors.LightGray,
+                StrokeWidth = 1,
+                IsAntialias = true,
+                IsStroke = true
+            };
 
-                int daysCount = 7;
-                int barWidth = 40;
-                int spacing = (endX - startX) / (daysCount + 1);
-                
-                int index = 0;
-                foreach (var kvp in data)
-                {
-                    DateTime dt;
-                    string dayLabel = kvp.Key;
-                    if (DateTime.TryParse(kvp.Key, out dt))
-                    {
-                        string[] sysDays = { "Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб" };
-                        dayLabel = sysDays[(int)dt.DayOfWeek];
-                    }
+            using var barPaint = new SKPaint
+            {
+                Color = new SKColor(100, 150, 250, 255),
+                IsAntialias = true,
+                Style = SKPaintStyle.Fill
+            };
+            
+            using var barBorderPaint = new SKPaint
+            {
+                Color = SKColors.Black,
+                StrokeWidth = 2,
+                IsAntialias = true,
+                Style = SKPaintStyle.Stroke
+            };
 
-                    int value = kvp.Value > 3 ? 3 : kvp.Value;
-                    int barHeight = value * 80;
-                    int x = startX + spacing * (index + 1) - (barWidth / 2);
-                    int y = startY - barHeight;
+            canvas.DrawText("Твоя продуктивность за 7 дней", 100, 50, titlePaint);
 
-                    if (barHeight > 0)
-                    {
-                        g.FillRectangle(barBrush, x, y, barWidth, barHeight);
-                        g.DrawRectangle(drawPen, x, y, barWidth, barHeight);
-                    }
+            int startX = 100;
+            int endX = 750;
+            int startY = 400;
+            
+            canvas.DrawLine(startX, startY, endX, startY, linePaint);
+            canvas.DrawLine(startX, startY, startX, 100, linePaint);
 
-                    g.DrawString(dayLabel, labelFont, Brushes.Black, x - 5, startY + 10);
-                    index++;
-                }
+            for (int i = 0; i <= 3; i++)
+            {
+                int y = startY - (i * 80);
+                canvas.DrawText(i.ToString(), startX - 30, y + 6, labelPaint);
+                canvas.DrawLine(startX, y, endX, y, gridPaint);
             }
 
+            int daysCount = 7;
+            int barWidth = 40;
+            int spacing = (endX - startX) / (daysCount + 1);
+            
+            int index = 0;
+            foreach (var kvp in data)
+            {
+                DateTime dt;
+                string dayLabel = kvp.Key;
+                if (DateTime.TryParse(kvp.Key, out dt))
+                {
+                    string[] sysDays = { "Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб" };
+                    dayLabel = sysDays[(int)dt.DayOfWeek];
+                }
+
+                int value = kvp.Value > 3 ? 3 : kvp.Value;
+                int barHeight = value * 80;
+                int x = startX + spacing * (index + 1) - (barWidth / 2);
+                int y = startY - barHeight;
+
+                if (barHeight > 0)
+                {
+                    var rect = new SKRect(x, y, x + barWidth, startY);
+                    canvas.DrawRect(rect, barPaint);
+                    canvas.DrawRect(rect, barBorderPaint);
+                }
+
+                // X label
+                canvas.DrawText(dayLabel, x - 5, startY + 25, labelPaint);
+                index++;
+            }
+
+            using var image = surface.Snapshot();
+            using var dataImage = image.Encode(SKEncodedImageFormat.Png, 100);
+            
             var ms = new MemoryStream();
-            bmp.Save(ms, ImageFormat.Png);
+            dataImage.SaveTo(ms);
             ms.Position = 0;
             return ms;
         }

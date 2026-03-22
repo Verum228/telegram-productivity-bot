@@ -63,7 +63,6 @@ namespace TelegramProductivityBot.Services
 
         private async Task ProcessTaskDeadlineAsync(int taskType, Models.DayPlan plan, string? deadlineStr, bool isDone, bool isFailed, int reminderStatus, bool isNotified)
         {
-            // Если дедлайна нет или задача уже завершена/провалена
             if (string.IsNullOrEmpty(deadlineStr) || isDone || isFailed) return;
 
             string taskText = taskType switch {
@@ -72,33 +71,31 @@ namespace TelegramProductivityBot.Services
                 _ => plan.EasyTask ?? "Лёгкая"
             };
 
-            // Парсим дедлайн относительно сегодняшнего дня (в локальной таймзоне)
             if (!TimeSpan.TryParse(deadlineStr, out TimeSpan deadlineTimeSpan)) return;
             var now = DateTime.Now;
             var deadlineTime = now.Date.Add(deadlineTimeSpan);
 
             var diff = deadlineTime - now;
 
-            // Просрочено
-            if (now > deadlineTime && !isNotified)
+            // 1. OVERDUE CHECK (FIRST)
+            if (now >= deadlineTime && !isDone && !isFailed && !isNotified)
             {
-                // Пометить как проваленную (-5 XP, лог и т.п.)
                 await _dayPlanService.ProcessDayPlanTaskAsync(plan.UserId, taskType, false);
-                await _botClient.SendMessage(chatId: plan.UserId, text: $"❌ Дедлайн пропущен: {taskText}\n-5 XP");
                 _taskService.SetTaskOverdueNotified(plan.UserId, taskType);
+                await _botClient.SendMessage(chatId: plan.UserId, text: $"❌ Дедлайн пропущен: {taskText}\n-5 XP");
                 return;
             }
 
-            // T-10 минут
-            if (diff.TotalMinutes <= 10 && diff.TotalMinutes > 0 && reminderStatus == 1)
+            // 2. 10 MINUTES REMINDER
+            if (diff.TotalMinutes <= 10 && diff.TotalMinutes > 0 && reminderStatus < 2)
             {
-                await _botClient.SendMessage(chatId: plan.UserId, text: $"⚠️ Осталось 10 минут: {taskText}");
+                await _botClient.SendMessage(chatId: plan.UserId, text: $"⚠️ 10 минут до дедлайна: {taskText}");
                 _taskService.SetTaskReminderStatus(plan.UserId, taskType, 2);
                 return;
             }
 
-            // T-30 минут
-            if (diff.TotalMinutes <= 30 && diff.TotalMinutes > 10 && reminderStatus == 0)
+            // 3. 30 MINUTES REMINDER
+            if (diff.TotalMinutes <= 30 && diff.TotalMinutes > 0 && reminderStatus < 1)
             {
                 await _botClient.SendMessage(chatId: plan.UserId, text: $"⏰ Через 30 минут дедлайн: {taskText}");
                 _taskService.SetTaskReminderStatus(plan.UserId, taskType, 1);
