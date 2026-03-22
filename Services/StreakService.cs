@@ -74,5 +74,15 @@ namespace TelegramProductivityBot.Services
 
             return streak;
         }
+
+        /// <summary>
+        /// Принудительно сбросить стрик до нуля (например, при сбое DayResetService)
+        /// </summary>
+        public void ResetStreak(long userId)
+        {
+            var streak = _taskService.GetUserStreak(userId);
+            streak.CurrentStreak = 0;
+            _taskService.UpdateUserStreak(streak);
+        }
     }
 }

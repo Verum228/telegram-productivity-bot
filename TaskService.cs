@@ -131,6 +131,24 @@ namespace TelegramProductivityBot
             command.ExecuteNonQuery();
         }
 
+        public void SetDayPlanTaskStatus(long planId, int taskType, bool done, bool failed)
+        {
+            string setClause = taskType switch {
+                1 => "MainDone = $done, MainFailed = $failed",
+                2 => "MediumDone = $done, MediumFailed = $failed",
+                _ => "EasyDone = $done, EasyFailed = $failed"
+            };
+
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+            var command = connection.CreateCommand();
+            command.CommandText = $"UPDATE day_plans SET {setClause} WHERE Id = $id";
+            command.Parameters.AddWithValue("$done", done ? 1 : 0);
+            command.Parameters.AddWithValue("$failed", failed ? 1 : 0);
+            command.Parameters.AddWithValue("$id", planId);
+            command.ExecuteNonQuery();
+        }
+
         public void SetTaskReminderStatus(long userId, int taskType, int status)
         {
             var plan = GetTodayPlan(userId);
@@ -325,6 +343,44 @@ namespace TelegramProductivityBot
 
         public List<DayPlan> GetPast7DaysPlans(long userId) => GetPastDaysPlans(userId, 7);
 
+        public List<DayPlan> GetActivePlansFromYesterday()
+        {
+            var plans = new List<DayPlan>();
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+
+            var command = connection.CreateCommand();
+            command.CommandText = @"
+                SELECT Id, UserId, MainTask, MainDone, MediumTask, MediumDone, EasyTask, EasyDone, CreatedDate, IsPlanCompleted,
+                       MainFailed, MediumFailed, EasyFailed
+                FROM day_plans
+                WHERE IsPlanCompleted = 0 AND CreatedDate < $today";
+            command.Parameters.AddWithValue("$today", DateTime.Today.ToString("yyyy-MM-dd"));
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                plans.Add(new DayPlan
+                {
+                    Id = reader.GetInt32(0),
+                    UserId = reader.GetInt64(1),
+                    MainTask = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                    MainDone = reader.GetInt32(3) == 1,
+                    MediumTask = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                    MediumDone = reader.GetInt32(5) == 1,
+                    EasyTask = reader.IsDBNull(6) ? "" : reader.GetString(6),
+                    EasyDone = reader.GetInt32(7) == 1,
+                    CreatedDate = DateTime.Parse(reader.GetString(8)),
+                    IsPlanCompleted = !reader.IsDBNull(9) && reader.GetInt32(9) == 1,
+                    MainFailed = reader.GetInt32(10) == 1,
+                    MediumFailed = reader.GetInt32(11) == 1,
+                    EasyFailed = reader.GetInt32(12) == 1
+                });
+            }
+
+            return plans;
+        }
+
         public int GetFocusSessionsCompletedToday(long userId)
         {
             using var connection = new SqliteConnection(_connectionString);
@@ -478,38 +534,7 @@ namespace TelegramProductivityBot
             command.ExecuteNonQuery();
         }
 
-        public void SetDayPlanTaskStatus(long userId, int taskType, bool isDone, bool isFailed)
-        {
-            var plan = GetTodayPlan(userId);
-            if (plan == null) return;
 
-            using var connection = new SqliteConnection(_connectionString);
-            connection.Open();
-
-            string doneColumn = taskType switch
-            {
-                1 => "MainDone",
-                2 => "MediumDone",
-                3 => "EasyDone",
-                _ => "MainDone"
-            };
-
-            string failedColumn = taskType switch
-            {
-                1 => "MainFailed",
-                2 => "MediumFailed",
-                3 => "EasyFailed",
-                _ => "MainFailed"
-            };
-
-            var command = connection.CreateCommand();
-            command.CommandText = $"UPDATE day_plans SET {doneColumn} = $done, {failedColumn} = $failed WHERE Id = $id";
-            command.Parameters.AddWithValue("$done", isDone ? 1 : 0);
-            command.Parameters.AddWithValue("$failed", isFailed ? 1 : 0);
-            command.Parameters.AddWithValue("$id", plan.Id);
-
-            command.ExecuteNonQuery();
-        }
 
         public void SetPlanCompleted(long userId)
         {

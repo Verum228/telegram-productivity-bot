@@ -44,7 +44,6 @@ namespace TelegramProductivityBot.Services
                     await Task.Delay(TimeSpan.FromSeconds(60), token);
 
                     var activePlans = _taskService.GetActivePlansWithDeadlines();
-                    var now = DateTime.Now;
 
                     foreach (var plan in activePlans)
                     {
@@ -72,15 +71,19 @@ namespace TelegramProductivityBot.Services
             };
 
             if (!TimeSpan.TryParse(deadlineStr, out TimeSpan deadlineTimeSpan)) return;
-            var now = DateTime.Now;
+            
+            var now = DateTime.UtcNow.AddHours(2);
             var deadlineTime = now.Date.Add(deadlineTimeSpan);
+
+            Console.WriteLine($"NOW: {now}");
+            Console.WriteLine($"DEADLINE: {deadlineTime}");
 
             var diff = deadlineTime - now;
 
             // 1. OVERDUE CHECK (FIRST)
             if (now >= deadlineTime && !isDone && !isFailed && !isNotified)
             {
-                await _dayPlanService.ProcessDayPlanTaskAsync(plan.UserId, taskType, false);
+                await _dayPlanService.ProcessDayPlanTaskAsync(plan, taskType, false);
                 _taskService.SetTaskOverdueNotified(plan.UserId, taskType);
                 await _botClient.SendMessage(chatId: plan.UserId, text: $"❌ Дедлайн пропущен: {taskText}\n-5 XP");
                 return;

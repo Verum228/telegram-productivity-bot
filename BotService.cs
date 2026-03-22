@@ -29,6 +29,7 @@ namespace TelegramProductivityBot
         private readonly AdviceService _adviceService;
         private readonly DeadlineService _deadlineService;
         private readonly StatisticsService _statisticsService;
+        private readonly DayResetService _dayResetService;
         private readonly CancellationTokenSource _cts;
 
         public BotService(string botToken)
@@ -49,6 +50,7 @@ namespace TelegramProductivityBot
             _adviceService = new AdviceService(_taskService, _streakService);
             _deadlineService = new DeadlineService(_botClient, _taskService, _dayPlanService, _statsService);
             _statisticsService = new StatisticsService(_taskService);
+            _dayResetService = new DayResetService(_botClient, _taskService, _dayPlanService, _streakService);
             
             // Инициализируем обработчик команд, передавая ему клиент бота и сервисы
             _commandHandler = new CommandHandler(_botClient, _taskService, _focusService, _antiLazinessService, _statsService, _dayPlanService, _activityService, _longTaskService, _streakService, _adviceService, _statisticsService);
@@ -91,6 +93,7 @@ namespace TelegramProductivityBot
         {
             _cts.Cancel();
             _antiLazinessService.Stop();
+            _dayResetService.Stop();
             Console.WriteLine("Бот остановлен.");
         }
 
