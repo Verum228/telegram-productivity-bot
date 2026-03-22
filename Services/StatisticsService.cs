@@ -38,7 +38,7 @@ namespace TelegramProductivityBot.Services
             return stats;
         }
 
-        public Stream GenerateGraphImage(Dictionary<string, int> data)
+        public Stream GenerateGraphImage(Dictionary<string, int> data, string lang)
         {
             int width = 800;
             int height = 500;
@@ -98,7 +98,7 @@ namespace TelegramProductivityBot.Services
                 Style = SKPaintStyle.Stroke
             };
 
-            canvas.DrawText("Твоя продуктивность за 7 дней", 100, 50, titlePaint);
+            canvas.DrawText(LocalizationService.T("stats_graph_title", lang), 100, 50, titlePaint);
 
             int startX = 100;
             int endX = 750;

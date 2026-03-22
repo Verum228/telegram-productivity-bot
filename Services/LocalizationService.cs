@@ -203,6 +203,70 @@ namespace TelegramProductivityBot.Services
                 { "ru", "Главное меню" },
                 { "en", "Main menu" }
             }},
+            { "stats_title", new Dictionary<string, string> {
+                { "ru", "Статистика" },
+                { "en", "Statistics" }
+            }},
+            { "stats_week", new Dictionary<string, string> {
+                { "ru", "Статистика за неделю:\n\n" },
+                { "en", "Weekly statistics:\n\n" }
+            }},
+            { "stats_month", new Dictionary<string, string> {
+                { "ru", "Статистика за месяц:\n\n" },
+                { "en", "Monthly statistics:\n\n" }
+            }},
+            { "stats_completed", new Dictionary<string, string> {
+                { "ru", "✔ Выполнено задач: {total}\n" },
+                { "en", "✔ Tasks completed: {total}\n" }
+            }},
+            { "stats_main", new Dictionary<string, string> {
+                { "ru", "🔥 Главные: {main}\n" },
+                { "en", "🔥 Main: {main}\n" }
+            }},
+            { "stats_medium", new Dictionary<string, string> {
+                { "ru", "⚙ Средние: {medium}\n" },
+                { "en", "⚙ Medium: {medium}\n" }
+            }},
+            { "stats_easy", new Dictionary<string, string> {
+                { "ru", "🟢 Лёгкие: {easy}\n" },
+                { "en", "🟢 Easy: {easy}\n" }
+            }},
+            { "stats_xp", new Dictionary<string, string> {
+                { "ru", "⭐ Получено XP: {xp}" },
+                { "en", "⭐ XP Gained: {xp}" }
+            }},
+            { "stats_streak", new Dictionary<string, string> {
+                { "ru", "Серия дней" },
+                { "en", "Streak" }
+            }},
+            { "stats_best", new Dictionary<string, string> {
+                { "ru", "Лучший результат" },
+                { "en", "Best result" }
+            }},
+            { "stats_graph_title", new Dictionary<string, string> {
+                { "ru", "Твоя продуктивность за 7 дней" },
+                { "en", "Your productivity for 7 days" }
+            }},
+            { "stats_graph_caption", new Dictionary<string, string> {
+                { "ru", "Твоя продуктивность за последнюю неделю!" },
+                { "en", "Your productivity for the last week!" }
+            }},
+            { "stats_advice", new Dictionary<string, string> {
+                { "ru", "💡 Я заметил, что ты редко используешь таймер Pomodoro. Попробуй включить /focus 25 сегодня — это поможет не отвлекаться и сделать дела быстрее." },
+                { "en", "💡 I noticed you rarely use the Pomodoro timer. Try using /focus 25 today — it will help you stay focused and get things done faster." }
+            }},
+            { "stats_advice_streak", new Dictionary<string, string> {
+                { "ru", "🔥 Твоя серия дней просто огонь! Продолжай в том же духе, ты выработал отличную привычку. Главное — не сбивать темп!" },
+                { "en", "🔥 Your daily streak is on fire! Keep it up, you've built a great habit. Just don't break the momentum!" }
+            }},
+            { "stats_advice_tasks", new Dictionary<string, string> {
+                { "ru", "📉 За последнюю неделю выполнено маловато задач. Возможно, твой план на день слишком амбициозен? Попробуй ставить более мелкие и легкие задачи в план, чтобы втянуться." },
+                { "en", "📉 few tasks have been completed in the last week. Maybe your daily plan is too ambitious? Try setting smaller and easier tasks to get into the flow." }
+            }},
+            { "stats_advice_default", new Dictionary<string, string> {
+                { "ru", "✨ Ты молодец! Совет дня: если задача кажется неподъемной, разбей её на 3 мелких шага и сделай первый." },
+                { "en", "✨ Good job! Tip of the day: if a task seems overwhelming, break it down into 3 small steps and just do the first one." }
+            }},
             { "unknown_command", new Dictionary<string, string> {
                 { "ru", "Используйте кнопки меню." },
                 { "en", "Please use the menu buttons." }

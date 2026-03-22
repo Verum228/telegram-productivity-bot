@@ -215,9 +215,9 @@ namespace TelegramProductivityBot
                 try 
                 {
                     var data = _statisticsService.GetLast7DaysStats(chatId);
-                    using var stream = _statisticsService.GenerateGraphImage(data);
+                    using var stream = _statisticsService.GenerateGraphImage(data, lang);
                     var photo = Telegram.Bot.Types.InputFile.FromStream(stream, "graph.png");
-                    await _botClient.SendPhoto(chatId, photo, caption: "Твоя продуктивность за последнюю неделю!", cancellationToken: cancellationToken);
+                    await _botClient.SendPhoto(chatId, photo, caption: LocalizationService.T("stats_graph_caption", lang), cancellationToken: cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -313,11 +313,13 @@ namespace TelegramProductivityBot
                     await _botClient.SendMessage(chatId, streakResponse, cancellationToken: cancellationToken);
                     break;
                 case "/month":
-                    string monthReport = _activityService.GetMonthlyStatsReport(chatId);
+                    var langMonth = _taskService.GetUserLanguage(chatId) ?? "ru";
+                    string monthReport = _activityService.GetMonthlyStatsReport(chatId, langMonth);
                     await _botClient.SendMessage(chatId, monthReport, cancellationToken: cancellationToken);
                     break;
                 case "/advice":
-                    string advice = _adviceService.GetAdvice(chatId);
+                    var langAdvice = _taskService.GetUserLanguage(chatId) ?? "ru";
+                    string advice = _adviceService.GetAdvice(chatId, langAdvice);
                     await _botClient.SendMessage(chatId, advice, cancellationToken: cancellationToken);
                     break;
                 case "/settings_menu_trigger":
@@ -797,7 +799,8 @@ namespace TelegramProductivityBot
         /// </summary>
         private async Task HandleWeekCommandAsync(long chatId, CancellationToken cancellationToken)
         {
-            string report = _activityService.GetWeeklyStatsReport(chatId);
+            var lang = _taskService.GetUserLanguage(chatId) ?? "ru";
+            string report = _activityService.GetWeeklyStatsReport(chatId, lang);
             await _botClient.SendMessage(
                 chatId: chatId,
                 text: report,

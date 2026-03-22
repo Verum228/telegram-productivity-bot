@@ -19,7 +19,7 @@ namespace TelegramProductivityBot.Services
         /// <summary>
         /// Генерирует совет на основе активности за последние 7 дней и текущего стрика.
         /// </summary>
-        public string GetAdvice(long userId)
+        public string GetAdvice(long userId, string lang)
         {
             int tasks7d = _taskService.GetActivitySumLastDays(userId, "task", 7);
             int focus7d = _taskService.GetActivitySumLastDays(userId, "focus", 7);
@@ -28,23 +28,23 @@ namespace TelegramProductivityBot.Services
             // 1. Похвала за высокий стрик
             if (streak.CurrentStreak >= 3)
             {
-                return "🔥 Твоя серия дней просто огонь! Продолжай в том же духе, ты выработал отличную привычку. Главное — не сбивать темп!";
+                return LocalizationService.T("stats_advice_streak", lang);
             }
 
             // 2. Мало фокус-сессий
             if (focus7d < 2)
             {
-                return "💡 Я заметил, что ты редко используешь таймер Pomodoro. Попробуй включить /focus 25 сегодня — это поможет не отвлекаться и сделать дела быстрее.";
+                return LocalizationService.T("stats_advice", lang);
             }
 
             // 3. Мало выполненных задач
             if (tasks7d < 5)
             {
-                return "📉 За последнюю неделю выполнено маловато задач. Возможно, твой план на день слишком амбициозен? Попробуй ставить более мелкие и легкие задачи в план, чтобы втянуться.";
+                return LocalizationService.T("stats_advice_tasks", lang);
             }
 
             // Дефолтный совет
-            return "✨ Ты молодец! Совет дня: если задача кажется неподъемной, разбей её на 3 мелких шага и сделай первый.";
+            return LocalizationService.T("stats_advice_default", lang);
         }
     }
 }

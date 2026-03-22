@@ -25,7 +25,7 @@ namespace TelegramProductivityBot.Services
         /// <summary>
         /// Возвращает статистику за последние 7 дней в виде отформатированной строки
         /// </summary>
-        public string GetWeeklyStatsReport(long userId)
+        public string GetWeeklyStatsReport(long userId, string lang)
         {
             var plans = _taskService.GetPast7DaysPlans(userId);
             int main = 0, medium = 0, easy = 0;
@@ -38,15 +38,15 @@ namespace TelegramProductivityBot.Services
 
             int xp7d = _taskService.GetActivitySumLastDays(userId, "xp", 7);
 
-            return "Статистика за неделю:\n\n" +
-                   $"✔ Выполнено задач: {total}\n" +
-                   $"🔥 Главные: {main}\n" +
-                   $"⚙ Средние: {medium}\n" +
-                   $"🟢 Лёгкие: {easy}\n" +
-                   $"⭐ Получено XP: {xp7d}";
+            return LocalizationService.T("stats_week", lang) +
+                   LocalizationService.T("stats_completed", lang).Replace("{total}", total.ToString()) +
+                   LocalizationService.T("stats_main", lang).Replace("{main}", main.ToString()) +
+                   LocalizationService.T("stats_medium", lang).Replace("{medium}", medium.ToString()) +
+                   LocalizationService.T("stats_easy", lang).Replace("{easy}", easy.ToString()) +
+                   LocalizationService.T("stats_xp", lang).Replace("{xp}", xp7d.ToString());
         }
 
-        public string GetMonthlyStatsReport(long userId)
+        public string GetMonthlyStatsReport(long userId, string lang)
         {
             var plans = _taskService.GetPastDaysPlans(userId, 30);
             int main = 0, medium = 0, easy = 0;
@@ -59,12 +59,12 @@ namespace TelegramProductivityBot.Services
 
             int xp30d = _taskService.GetActivitySumLastDays(userId, "xp", 30);
 
-            return "Статистика за месяц:\n\n" +
-                   $"✔ Выполнено задач: {total}\n" +
-                   $"🔥 Главные: {main}\n" +
-                   $"⚙ Средние: {medium}\n" +
-                   $"🟢 Лёгкие: {easy}\n" +
-                   $"⭐ Получено XP: {xp30d}";
+            return LocalizationService.T("stats_month", lang) +
+                   LocalizationService.T("stats_completed", lang).Replace("{total}", total.ToString()) +
+                   LocalizationService.T("stats_main", lang).Replace("{main}", main.ToString()) +
+                   LocalizationService.T("stats_medium", lang).Replace("{medium}", medium.ToString()) +
+                   LocalizationService.T("stats_easy", lang).Replace("{easy}", easy.ToString()) +
+                   LocalizationService.T("stats_xp", lang).Replace("{xp}", xp30d.ToString());
         }
     }
 }
