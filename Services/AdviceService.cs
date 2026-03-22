@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 
 namespace TelegramProductivityBot.Services
 {
@@ -9,6 +10,12 @@ namespace TelegramProductivityBot.Services
     {
         private readonly TaskService _taskService;
         private readonly StreakService _streakService;
+        private readonly Random _random = new Random();
+
+        // Память последнего совета для каждого пользователя (anti-repeat)
+        private readonly ConcurrentDictionary<long, int> _lastAdviceIndex = new();
+
+        private const int AdviceCount = 15;
 
         public AdviceService(TaskService taskService, StreakService streakService)
         {
@@ -43,8 +50,19 @@ namespace TelegramProductivityBot.Services
                 return LocalizationService.T("stats_advice_tasks", lang);
             }
 
-            // Дефолтный совет
-            return LocalizationService.T("stats_advice_default", lang);
+            // 4. Случайный совет из 15 (с защитой от повтора)
+            int index = _random.Next(1, AdviceCount + 1);
+
+            // Anti-repeat: если совпадает с прошлым — перегенерировать
+            if (_lastAdviceIndex.TryGetValue(userId, out int lastIndex) && lastIndex == index)
+            {
+                index = (index % AdviceCount) + 1; // сдвигаем на 1
+            }
+
+            _lastAdviceIndex[userId] = index;
+
+            string key = $"stats_advice_{index}";
+            return LocalizationService.T(key, lang);
         }
     }
 }

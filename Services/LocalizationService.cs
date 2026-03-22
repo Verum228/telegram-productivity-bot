@@ -171,6 +171,10 @@ namespace TelegramProductivityBot.Services
                 { "ru", "План на сегодня сохранён." },
                 { "en", "Today's plan is saved." }
             }},
+            { "plan_cancelled", new Dictionary<string, string> {
+                { "ru", "Создание плана отменено." },
+                { "en", "Plan creation cancelled." }
+            }},
             { "plan_deleted", new Dictionary<string, string> {
                 { "ru", "План на сегодня удалён." },
                 { "en", "Today's plan deleted." }
@@ -268,8 +272,8 @@ namespace TelegramProductivityBot.Services
                 { "en", "Your productivity for the last week!" }
             }},
             { "report_stats_advice", new Dictionary<string, string> {
-                { "ru", "💡 Я заметил, что ты редко используешь таймер Pomodoro. Попробуй включить /focus 25 сегодня — это поможет не отвлекаться и сделать дела быстрее." },
-                { "en", "💡 I noticed you rarely use the Pomodoro timer. Try using /focus 25 today — it will help you stay focused and get things done faster." }
+                { "ru", "💡 Я заметил, что ты редко фокусируешься. Попробуй выделить 25 минут без отвлечений — это поможет сделать дела быстрее." },
+                { "en", "💡 I noticed you rarely stay focused. Try working for 25 minutes without distractions — it will help you get things done faster." }
             }},
             { "stats_advice_streak", new Dictionary<string, string> {
                 { "ru", "🔥 Твоя серия дней просто огонь! Продолжай в том же духе, ты выработал отличную привычку. Главное — не сбивать темп!" },
@@ -282,6 +286,66 @@ namespace TelegramProductivityBot.Services
             { "stats_advice_default", new Dictionary<string, string> {
                 { "ru", "✨ Ты молодец! Совет дня: если задача кажется неподъемной, разбей её на 3 мелких шага и сделай первый." },
                 { "en", "✨ Good job! Tip of the day: if a task seems overwhelming, break it down into 3 small steps and just do the first one." }
+            }},
+            { "stats_advice_1", new Dictionary<string, string> {
+                { "ru", "Начни с самой сложной задачи — дальше будет легче." },
+                { "en", "Start with the hardest task — everything else will feel easier." }
+            }},
+            { "stats_advice_2", new Dictionary<string, string> {
+                { "ru", "Убери отвлекающие факторы хотя бы на 20 минут." },
+                { "en", "Remove distractions for at least 20 minutes." }
+            }},
+            { "stats_advice_3", new Dictionary<string, string> {
+                { "ru", "Разбей большую задачу на маленькие шаги." },
+                { "en", "Break a big task into smaller steps." }
+            }},
+            { "stats_advice_4", new Dictionary<string, string> {
+                { "ru", "Сделай хотя бы 5 минут — это уже прогресс." },
+                { "en", "Do at least 5 minutes — it still counts." }
+            }},
+            { "stats_advice_5", new Dictionary<string, string> {
+                { "ru", "Не жди мотивации — начни действовать." },
+                { "en", "Don't wait for motivation — start acting." }
+            }},
+            { "stats_advice_6", new Dictionary<string, string> {
+                { "ru", "Сконцентрируйся на одной задаче, не переключайся." },
+                { "en", "Focus on one task — avoid switching." }
+            }},
+            { "stats_advice_7", new Dictionary<string, string> {
+                { "ru", "Начни прямо сейчас, даже если не хочется." },
+                { "en", "Start right now, even if you don't feel like it." }
+            }},
+            { "stats_advice_8", new Dictionary<string, string> {
+                { "ru", "Сделай задачу проще — главное начать." },
+                { "en", "Make the task easier — the goal is to start." }
+            }},
+            { "stats_advice_9", new Dictionary<string, string> {
+                { "ru", "Поставь таймер и работай без остановки." },
+                { "en", "Set a timer and work without stopping." }
+            }},
+            { "stats_advice_10", new Dictionary<string, string> {
+                { "ru", "Не жди идеального момента — его не будет." },
+                { "en", "Don't wait for the perfect moment — it won't come." }
+            }},
+            { "stats_advice_11", new Dictionary<string, string> {
+                { "ru", "Закрой лишние вкладки и сосредоточься." },
+                { "en", "Close unnecessary tabs and focus." }
+            }},
+            { "stats_advice_12", new Dictionary<string, string> {
+                { "ru", "Напомни себе, зачем ты это делаешь." },
+                { "en", "Remind yourself why you're doing this." }
+            }},
+            { "stats_advice_13", new Dictionary<string, string> {
+                { "ru", "Даже 10 минут работы лучше, чем ничего." },
+                { "en", "Even 10 minutes of work is better than nothing." }
+            }},
+            { "stats_advice_14", new Dictionary<string, string> {
+                { "ru", "Не перегружай себя — делай шаг за шагом." },
+                { "en", "Don't overload yourself — go step by step." }
+            }},
+            { "stats_advice_15", new Dictionary<string, string> {
+                { "ru", "Сконцентрируйся на результате, а не на сложности." },
+                { "en", "Focus on the result, not the difficulty." }
             }},
             { "stats_profile", new Dictionary<string, string> {
                 { "ru", "📊 Профиль" },

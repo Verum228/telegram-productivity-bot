@@ -692,7 +692,12 @@ namespace TelegramProductivityBot
             var newState = new PlanFormState { Step = 1 };
             _planStates[chatId] = newState;
 
-            await _botClient.SendMessage(chatId, LocalizationService.T("plan_prompt_main", lang), cancellationToken: cancellationToken);
+            var backKeyboard = new ReplyKeyboardMarkup(new[]
+            {
+                new KeyboardButton[] { LocalizationService.T("btn_back", lang) }
+            }) { ResizeKeyboard = true };
+
+            await _botClient.SendMessage(chatId, LocalizationService.T("plan_prompt_main", lang), replyMarkup: backKeyboard, cancellationToken: cancellationToken);
         }
 
         /// <summary>
@@ -743,6 +748,21 @@ namespace TelegramProductivityBot
         private async Task HandlePlanStepAsync(long chatId, string text, PlanFormState state, CancellationToken cancellationToken)
         {
             var lang = _taskService.GetUserLanguage(chatId) ?? "ru";
+
+            // Back button — cancel plan creation at any step
+            if (text == LocalizationService.T("btn_back", lang) || text.Contains(LocalizationService.T("btn_back", lang)))
+            {
+                _planStates.TryRemove(chatId, out _);
+                await _botClient.SendMessage(chatId, LocalizationService.T("plan_cancelled", lang), cancellationToken: cancellationToken);
+                await SendMainMenuAsync(chatId, LocalizationService.T("main_menu", lang), cancellationToken);
+                return;
+            }
+
+            var backKeyboard = new ReplyKeyboardMarkup(new[]
+            {
+                new KeyboardButton[] { LocalizationService.T("btn_back", lang) }
+            }) { ResizeKeyboard = true };
+
             switch (state.Step)
             {
                 case 1:
@@ -755,7 +775,7 @@ namespace TelegramProductivityBot
                     if (!TryParseDeadline(text, lang, out string? mainDl, out string err1)) { await _botClient.SendMessage(chatId, err1, cancellationToken: cancellationToken); return; }
                     state.DraftPlan.MainDeadline = mainDl;
                     state.Step = 3;
-                    await _botClient.SendMessage(chatId, LocalizationService.T("plan_prompt_medium", lang), replyMarkup: new ReplyKeyboardRemove(), cancellationToken: cancellationToken);
+                    await _botClient.SendMessage(chatId, LocalizationService.T("plan_prompt_medium", lang), replyMarkup: backKeyboard, cancellationToken: cancellationToken);
                     break;
 
                 case 3:
@@ -768,7 +788,7 @@ namespace TelegramProductivityBot
                     if (!TryParseDeadline(text, lang, out string? medDl, out string err2)) { await _botClient.SendMessage(chatId, err2, cancellationToken: cancellationToken); return; }
                     state.DraftPlan.MediumDeadline = medDl;
                     state.Step = 5;
-                    await _botClient.SendMessage(chatId, LocalizationService.T("plan_prompt_easy", lang), replyMarkup: new ReplyKeyboardRemove(), cancellationToken: cancellationToken);
+                    await _botClient.SendMessage(chatId, LocalizationService.T("plan_prompt_easy", lang), replyMarkup: backKeyboard, cancellationToken: cancellationToken);
                     break;
 
                 case 5:
@@ -872,7 +892,8 @@ namespace TelegramProductivityBot
         {
             return new ReplyKeyboardMarkup(new[]
             {
-                new KeyboardButton[] { LocalizationService.T("deadline_none", lang) }
+                new KeyboardButton[] { LocalizationService.T("deadline_none", lang) },
+                new KeyboardButton[] { LocalizationService.T("btn_back", lang) }
             }) { ResizeKeyboard = true, OneTimeKeyboard = true };
         }
 
