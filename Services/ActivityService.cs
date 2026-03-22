@@ -38,7 +38,7 @@ namespace TelegramProductivityBot.Services
 
             int xp7d = _taskService.GetActivitySumLastDays(userId, "xp", 7);
 
-            return LocalizationService.T("stats_week", lang) +
+            return LocalizationService.T("report_stats_week", lang) +
                    LocalizationService.T("stats_completed", lang).Replace("{total}", total.ToString()) +
                    LocalizationService.T("stats_main", lang).Replace("{main}", main.ToString()) +
                    LocalizationService.T("stats_medium", lang).Replace("{medium}", medium.ToString()) +
@@ -59,7 +59,7 @@ namespace TelegramProductivityBot.Services
 
             int xp30d = _taskService.GetActivitySumLastDays(userId, "xp", 30);
 
-            return LocalizationService.T("stats_month", lang) +
+            return LocalizationService.T("report_stats_month", lang) +
                    LocalizationService.T("stats_completed", lang).Replace("{total}", total.ToString()) +
                    LocalizationService.T("stats_main", lang).Replace("{main}", main.ToString()) +
                    LocalizationService.T("stats_medium", lang).Replace("{medium}", medium.ToString()) +

@@ -34,7 +34,7 @@ namespace TelegramProductivityBot.Services
             // 2. Мало фокус-сессий
             if (focus7d < 2)
             {
-                return LocalizationService.T("stats_advice", lang);
+                return LocalizationService.T("report_stats_advice", lang);
             }
 
             // 3. Мало выполненных задач

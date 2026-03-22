@@ -503,9 +503,9 @@ namespace TelegramProductivityBot
             var lang = _taskService.GetUserLanguage(chatId) ?? "ru";
             var replyKeyboardMarkup = new ReplyKeyboardMarkup(new[]
             {
-                new KeyboardButton[] { "📊 Профиль", "📊 График" },
-                new KeyboardButton[] { "📈 Неделя", "📅 Месяц" },
-                new KeyboardButton[] { "🔥 Стрик", "💡 Совет" },
+                new KeyboardButton[] { LocalizationService.T("stats_profile", lang), LocalizationService.T("stats_graph", lang) },
+                new KeyboardButton[] { LocalizationService.T("stats_week", lang), LocalizationService.T("stats_month", lang) },
+                new KeyboardButton[] { LocalizationService.T("stats_streak", lang), LocalizationService.T("stats_advice", lang) },
                 new KeyboardButton[] { LocalizationService.T("btn_back", lang) }
             })
             {

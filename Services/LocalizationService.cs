@@ -207,11 +207,11 @@ namespace TelegramProductivityBot.Services
                 { "ru", "Статистика" },
                 { "en", "Statistics" }
             }},
-            { "stats_week", new Dictionary<string, string> {
+            { "report_stats_week", new Dictionary<string, string> {
                 { "ru", "Статистика за неделю:\n\n" },
                 { "en", "Weekly statistics:\n\n" }
             }},
-            { "stats_month", new Dictionary<string, string> {
+            { "report_stats_month", new Dictionary<string, string> {
                 { "ru", "Статистика за месяц:\n\n" },
                 { "en", "Monthly statistics:\n\n" }
             }},
@@ -235,7 +235,7 @@ namespace TelegramProductivityBot.Services
                 { "ru", "⭐ Получено XP: {xp}" },
                 { "en", "⭐ XP Gained: {xp}" }
             }},
-            { "stats_streak", new Dictionary<string, string> {
+            { "report_stats_streak", new Dictionary<string, string> {
                 { "ru", "Серия дней" },
                 { "en", "Streak" }
             }},
@@ -251,7 +251,7 @@ namespace TelegramProductivityBot.Services
                 { "ru", "Твоя продуктивность за последнюю неделю!" },
                 { "en", "Your productivity for the last week!" }
             }},
-            { "stats_advice", new Dictionary<string, string> {
+            { "report_stats_advice", new Dictionary<string, string> {
                 { "ru", "💡 Я заметил, что ты редко используешь таймер Pomodoro. Попробуй включить /focus 25 сегодня — это поможет не отвлекаться и сделать дела быстрее." },
                 { "en", "💡 I noticed you rarely use the Pomodoro timer. Try using /focus 25 today — it will help you stay focused and get things done faster." }
             }},
@@ -266,6 +266,30 @@ namespace TelegramProductivityBot.Services
             { "stats_advice_default", new Dictionary<string, string> {
                 { "ru", "✨ Ты молодец! Совет дня: если задача кажется неподъемной, разбей её на 3 мелких шага и сделай первый." },
                 { "en", "✨ Good job! Tip of the day: if a task seems overwhelming, break it down into 3 small steps and just do the first one." }
+            }},
+            { "stats_profile", new Dictionary<string, string> {
+                { "ru", "📊 Профиль" },
+                { "en", "📊 Profile" }
+            }},
+            { "stats_graph", new Dictionary<string, string> {
+                { "ru", "📊 График" },
+                { "en", "📊 Graph" }
+            }},
+            { "stats_week", new Dictionary<string, string> {
+                { "ru", "📈 Неделя" },
+                { "en", "📈 Week" }
+            }},
+            { "stats_month", new Dictionary<string, string> {
+                { "ru", "📅 Месяц" },
+                { "en", "📅 Month" }
+            }},
+            { "stats_streak", new Dictionary<string, string> {
+                { "ru", "🔥 Стрик" },
+                { "en", "🔥 Streak" }
+            }},
+            { "stats_advice", new Dictionary<string, string> {
+                { "ru", "💡 Совет" },
+                { "en", "💡 Advice" }
             }},
             { "unknown_command", new Dictionary<string, string> {
                 { "ru", "Используйте кнопки меню." },
