@@ -347,6 +347,14 @@ namespace TelegramProductivityBot.Services
                 { "ru", "Сконцентрируйся на результате, а не на сложности." },
                 { "en", "Focus on the result, not the difficulty." }
             }},
+            { "morning_reminder", new Dictionary<string, string> {
+                { "ru", "Доброе утро.\nНе забудь создать план на сегодня:\n/plan" },
+                { "en", "Good morning.\nDon't forget to create your plan for today:\n/plan" }
+            }},
+            { "evening_reminder", new Dictionary<string, string> {
+                { "ru", "Подведи итог дня:\n/report" },
+                { "en", "Summarize your day:\n/report" }
+            }},
             { "stats_profile", new Dictionary<string, string> {
                 { "ru", "📊 Профиль" },
                 { "en", "📊 Profile" }

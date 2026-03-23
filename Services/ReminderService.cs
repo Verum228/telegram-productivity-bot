@@ -75,12 +75,13 @@ namespace TelegramProductivityBot.Services
 
         private async Task SendMorningRemindersAsync(CancellationToken cancellationToken)
         {
-            string message = "Доброе утро.\nНе забудь создать план на сегодня:\n/plan";
             var users = _taskService.GetAllUniqueUsers();
             foreach (var userId in users)
             {
                 try
                 {
+                    var lang = _taskService.GetUserLanguage(userId) ?? "ru";
+                    string message = LocalizationService.T("morning_reminder", lang);
                     await _botClient.SendMessage(userId, message, cancellationToken: cancellationToken);
                 }
                 catch (Exception ex)
@@ -92,12 +93,13 @@ namespace TelegramProductivityBot.Services
 
         private async Task SendEveningRemindersAsync(CancellationToken cancellationToken)
         {
-            string message = "Подведи итог дня:\n/report";
             var users = _taskService.GetAllUniqueUsers();
             foreach (var userId in users)
             {
                 try
                 {
+                    var lang = _taskService.GetUserLanguage(userId) ?? "ru";
+                    string message = LocalizationService.T("evening_reminder", lang);
                     await _botClient.SendMessage(userId, message, cancellationToken: cancellationToken);
                 }
                 catch (Exception ex)
