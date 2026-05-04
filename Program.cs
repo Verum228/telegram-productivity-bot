@@ -8,7 +8,7 @@ namespace TelegramProductivityBot
         static async Task Main(string[] args)
         {
             // Укажите токен вашего бота, который выдаст @BotFather
-            string botToken = "8778537631:AAEvDx4X1d8HSrGMUTKNh28izyCM_9i_Kfs";
+            string botToken = "";
 
             if (botToken == "YOUR_BOT_TOKEN_HERE")
             {
